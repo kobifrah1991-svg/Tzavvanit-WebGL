@@ -423,8 +423,8 @@ body.shapes .choice .shape { opacity: 1; }
 .paint.sel { box-shadow: 0 0 0 4px var(--accent), 0 4px 0 var(--edge); transform: translateY(-4px); }
 
 /* Pairs */
-.pairs { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 10px; perspective: 800px; }
-.card { position: relative; transform-style: preserve-3d; transition: transform .35s; touch-action: none; min-height: 64px; }
+.pairs { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); align-content: center; gap: 10px; perspective: 800px; width: min(100%, 420px); margin: 0 auto; }
+.card { position: relative; transform-style: preserve-3d; transition: transform .35s; touch-action: none; aspect-ratio: 4 / 5; }
 .card .face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; display: grid; place-items: center; }
 .card .back { background: linear-gradient(135deg, var(--c3), var(--c2)); box-shadow: 0 4px 0 rgba(0, 0, 0, .18); }
 .card .back::after { content: ""; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 255, 255, .35); }
@@ -432,6 +432,121 @@ body.shapes .choice .shape { opacity: 1; }
 .card .front svg { width: 62%; height: 62%; }
 .card.up { transform: rotateY(180deg); }
 .card.done .front { box-shadow: 0 0 0 3px var(--c2); }
+
+/* ---------- Game cards with a picture of the game ---------- */
+.game-card { padding: 0; overflow: hidden; border-top: 0; gap: 0; align-items: stretch; }
+.game-art { position: relative; display: block; aspect-ratio: 16 / 10; background: color-mix(in srgb, var(--gc) 18%, #fff); overflow: hidden; }
+.game-art > svg { width: 100%; height: 100%; display: block; }
+.game-art .game-icon { position: absolute; inset: 0; margin: auto; }
+.skill-tag { position: absolute; top: 8px; inset-inline-start: 8px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; max-width: calc(100% - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-card .best { top: auto; bottom: 8px; inset-inline-end: 8px; background: #fff; padding: 2px 8px; border-radius: 999px; box-shadow: 0 2px 6px rgba(var(--shade), .2); }
+.game-info { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px 10px; border-top: 5px solid var(--gc); }
+.game-info b { font-size: 16px; line-height: 1.25; }
+.game-info small { color: var(--ink-soft); font-size: 12px; line-height: 1.3; }
+.game-card.locked { filter: none; opacity: 1; }
+.game-card.locked .game-art > svg { filter: grayscale(1) blur(1.5px); opacity: .55; }
+.lock-veil { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: rgba(var(--shade), .55); color: #fff; font-weight: 800; font-size: 13px; text-align: center; padding: 6px; }
+.lock-veil .lock-badge { position: static; width: 26px; color: #fff; }
+
+/* ---------- Daily workout ---------- */
+.workout { margin-top: 14px; background: var(--ink); color: #fff; border-radius: var(--radius); padding: 14px 16px; box-shadow: 0 5px 0 #0a2530; }
+.wk-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.wk-head b { display: block; font-size: 19px; }
+.wk-head small { color: #b9d3da; font-size: 13px; }
+.workout .pill { background: rgba(255, 255, 255, .14); color: #fff; font-size: 15px; flex: none; }
+.workout .pill .drop { fill: #8cc8ff; }
+.wk-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.wk-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; background: rgba(255, 255, 255, .08); border-radius: 16px; padding: 8px 4px; text-align: center; }
+.wk-step .game-icon { width: 44px; height: 44px; margin: 0; background: #fff; }
+.wk-step .game-icon svg { width: 34px; height: 34px; }
+.wk-step small { font-size: 11px; color: #d6e9ee; line-height: 1.2; }
+.wk-step.done { background: rgba(46, 196, 182, .25); }
+.wk-check { position: absolute; top: 4px; inset-inline-end: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--c2); display: grid; place-items: center; }
+.wk-check svg { width: 15px; }
+.workout .btn { width: 100%; }
+.wk-complete { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 900; color: var(--c2); }
+.wk-complete svg { width: 22px; }
+
+/* ---------- Results and difficulty ---------- */
+.badge.diff-up { background: var(--c3); color: #fff; }
+.diff-note { font-size: 15px !important; }
+.hud-title small.diff-chip { display: block; font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+
+/* ---------- Parents ---------- */
+.p-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.p-stats > div { background: #fff; border-radius: 18px; padding: 10px; text-align: center; box-shadow: 0 4px 0 var(--edge); }
+.p-stats b { display: block; font-size: 24px; font-weight: 900; }
+.p-stats small { font-size: 12px; color: var(--ink-soft); }
+.p-chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; background: #fff; border-radius: 18px; padding: 12px 10px 8px; box-shadow: 0 4px 0 var(--edge); }
+.p-chart .day { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; }
+.p-chart .col { height: 80px; width: 100%; max-width: 26px; display: flex; align-items: flex-end; background: var(--muted); border-radius: 8px; overflow: hidden; }
+.p-chart .col i { display: block; width: 100%; background: var(--c3); border-radius: 8px; min-height: 2px; }
+.p-chart small { font-weight: 800; }
+.p-chart span { color: var(--ink-soft); }
+.p-skill { background: #fff; border-radius: 18px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 0 var(--edge); }
+.p-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.p-head b { font-size: 16px; }
+.p-head small { color: var(--ink-soft); font-size: 12px; }
+.trend { margin-inline-start: auto; font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 999px; background: var(--muted); }
+.trend.up { background: #d8f5e4; color: #157a3a; }
+.trend.down { background: #ffe3dc; color: #b23a24; }
+.p-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+.p-row small { display: block; font-size: 11px; color: var(--ink-soft); }
+.p-row b { font-size: 18px; }
+.dots { display: flex; gap: 3px; margin-top: 4px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.dots i.on { background: var(--dc); }
+.spark { width: 100%; height: 34px; margin-top: 6px; }
+.p-skill .muted { margin: 6px 0 0; color: var(--ink-soft); font-size: 13px; }
+.p-note { font-size: 13px; color: var(--ink-soft); line-height: 1.6; background: #fff; border-radius: 16px; padding: 12px 14px; }
+.setting .seg button { padding: 6px 10px; font-size: 14px; }
+
+/* ---------- Quick Math / patterns answers ---------- */
+.word.eq { font-size: clamp(40px, 12vw, 64px); color: var(--ink); }
+.answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answer { height: clamp(64px, 11dvh, 90px); border-radius: 22px; background: #fff; box-shadow: 0 6px 0 var(--edge); font-size: 30px; font-weight: 900; color: var(--ink); display: grid; place-items: center; touch-action: none; }
+.answer:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--edge); }
+.seq-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 10px; }
+.sym { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; }
+.sym svg { width: 34px; height: 34px; }
+.sym.num { font-size: 24px; font-weight: 900; background: #f3eefc; width: auto; min-width: 40px; padding: 0 6px; }
+.sym.q { border: 3px dashed var(--accent); color: var(--accent); font-size: 24px; font-weight: 900; }
+.sym.q.ok { border: 3px solid var(--c2); background: #e3f8f0; }
+.sym.q.bad { border: 3px solid var(--c0); background: #ffe8e3; }
+.sym-btn .sym { width: 52px; height: 52px; }
+.sym-btn .sym svg { width: 46px; height: 46px; }
+
+/* ---------- Odd One Out ---------- */
+.odd-wrap { flex: 1; display: grid; place-items: center; }
+.odd-grid { display: grid; gap: 6px; width: min(100%, 420px); aspect-ratio: 1; background: #fff; padding: 10px; border-radius: 24px; box-shadow: 0 6px 0 var(--edge); }
+.odd-cell { border-radius: 22%; touch-action: none; }
+.odd-cell:active { transform: scale(.94); }
+
+/* ---------- Keep the Beat ---------- */
+.beat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.beat .rule { align-self: stretch; }
+.drum { position: relative; width: min(62vw, 240px); aspect-ratio: 1; border-radius: 50%; touch-action: none; margin-top: 6px; }
+.drum .skin { position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #e3efff 0 40%, #8cc0ff 41% 100%); box-shadow: 0 10px 0 #2152cc, inset 0 -8px 0 rgba(0, 0, 0, .08); }
+.drum .ring { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #8cc0ff; opacity: 0; }
+.drum.pulse .ring { animation: ring .45s ease-out; }
+@keyframes ring { from { transform: scale(.82); opacity: .9; } to { transform: scale(1.05); opacity: 0; } }
+.drum.hit .skin { animation: hit .15s ease-out; }
+@keyframes hit { 50% { transform: scale(.94); } }
+.timing { display: flex; align-items: center; gap: 8px; width: min(100%, 360px); font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.t-bar { position: relative; flex: 1; height: 14px; border-radius: 999px; background: var(--muted); }
+.t-center { position: absolute; inset-inline-start: 50%; top: -4px; bottom: -4px; width: 3px; background: var(--ink); transform: translateX(-50%); }
+.t-mark { position: absolute; top: 50%; inset-inline-start: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--c2); transform: translate(-50%, -50%); transition: inset-inline-start .15s; }
+[dir="rtl"] .t-mark, [dir="rtl"] .t-center { transform: translate(50%, -50%); }
+[dir="rtl"] .t-center { transform: translateX(50%); }
+.b-feedback { min-height: 30px; font-size: 22px; font-weight: 900; }
+.b-feedback.ok { color: #178a39; }
+.b-feedback.mid { color: #cf9a10; }
+.b-feedback.bad { color: #c43a3a; }
+.beat-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 320px; }
+.beat-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+.beat-dots i.ok { background: #22b04b; }
+.beat-dots i.mid { background: #ffc21a; }
+.beat-dots i.bad { background: #ff4d4d; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

@@ -9,7 +9,8 @@
   const defaults = () => ({
     stars: {}, best: 0, hat: 'none', skin: 'peach', lang: 'he', sound: true, vibe: true, assist: false, shapes: false, seenIntro: {},
     coins: 0, xp: 0, owned: { hats: ['none'], skins: ['peach'] }, bests: {}, played: 0,
-    daily: null, streak: { last: '', count: 0 }, migrated: true,
+    daily: null, streak: { last: '', count: 0 }, migrated: true, workout: null,
+    adapt: {}, history: [], playSecs: {}, breakMin: 20,
   });
   const save = defaults();
   let loaded = {};
@@ -105,6 +106,21 @@
     g_simon: 'מסע הצלילים', g_simon_d: 'זיכרון וקצב',
     brainMap: 'מפת המוח שלי', brainHint: 'כל משחק מאמן מיומנות אחרת. שחקו בכולם כדי לחזק את כל המוח!',
     sk_memory: 'זיכרון עבודה', sk_inhibit: 'ריכוז ושליטה עצמית', sk_attention: 'קשב מתמשך', sk_reason: 'חשיבה ולמידה', sk_visual: 'זיכרון חזותי',
+    wk_title: 'אימון המוח היומי', wk_desc: 'שלושה תרגילים קצרים, כל אחד מאמן מיומנות אחרת',
+    wk_start: 'התחילו אימון', wk_continue: 'המשיכו', wk_next: (n, of) => `לתרגיל הבא (${n}/${of})`,
+    wk_done: 'האימון היומי הושלם!', wk_doneShort: 'הושלם היום',
+    diffLabel: n => `רמת קושי ${n}`, diffUp: n => `מעולה! עולים לרמת קושי ${n}`, diffDown: 'בפעם הבאה ננסה ברמה קצת יותר נוחה',
+    diffSame: n => `נשארים ברמת קושי ${n}`,
+    parents: 'אזור הורים', parents_d: 'התקדמות, זמן משחק והפסקות',
+    pgTitle: 'רק להורים', pgQ: (a, b) => `כמה זה ${a} × ${b}?`, pgWrong: 'לא נכון, נסו שוב',
+    week: 'השבוע האחרון', daysActive: 'ימים פעילים', minutes: 'דקות משחק', sessions: 'משחקים',
+    dayNames: ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'],
+    skillsTitle: 'מיומנויות', diffNow: 'רמת קושי נוכחית', accuracy: 'דיוק', noData: 'עוד לא שיחקו',
+    trendUp: 'משתפר', trendFlat: 'יציב', trendDown: 'קצת ירידה',
+    breakTitle: 'תזכורת להפסקה', breakDesc: 'הצעה עדינה לנוח אחרי זמן משחק רצוף', off: 'כבוי', minShort: n => `${n} ד׳`,
+    breakNow: 'זמן להפסקה קטנה!', breakText: 'המוח לומד הכי טוב עם הפסקות. אפשר לקום, לשתות מים ולחזור אחר כך.',
+    breakOk: 'אני אנוח', breakMore: 'עוד קצת',
+    parentNote: 'המשחקים מבוססים על תרגילים מוכרים לאימון זיכרון עבודה, קשב וריכוז, והקושי מתאים את עצמו לילד. אימון כזה משפר בעיקר את הביצועים במשחקים עצמם; הוא לא מחליף אבחון, טיפול או עזרה לימודית.',
   });
   Object.assign(STR.en, {
     lvl: 'Level', drops: 'drops', games: 'Games', shop: 'Shop', missions: 'Today\'s missions', claim: 'Claim', claimed: 'Done',
@@ -120,6 +136,21 @@
     g_simon: 'Sound Journey', g_simon_d: 'Memory and rhythm',
     brainMap: 'My brain map', brainHint: 'Each game trains a different skill. Play them all to train your whole brain!',
     sk_memory: 'Working memory', sk_inhibit: 'Focus and self-control', sk_attention: 'Sustained attention', sk_reason: 'Thinking and learning', sk_visual: 'Visual memory',
+    wk_title: 'Daily brain workout', wk_desc: 'Three short exercises, each training a different skill',
+    wk_start: 'Start workout', wk_continue: 'Continue', wk_next: (n, of) => `Next exercise (${n}/${of})`,
+    wk_done: 'Daily workout complete!', wk_doneShort: 'Done today',
+    diffLabel: n => `Difficulty ${n}`, diffUp: n => `Great! Moving up to difficulty ${n}`, diffDown: 'Next time we\'ll try a slightly easier level',
+    diffSame: n => `Staying at difficulty ${n}`,
+    parents: 'Parents area', parents_d: 'Progress, play time and breaks',
+    pgTitle: 'Parents only', pgQ: (a, b) => `What is ${a} × ${b}?`, pgWrong: 'Not quite, try again',
+    week: 'Last 7 days', daysActive: 'Active days', minutes: 'Minutes played', sessions: 'Games',
+    dayNames: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+    skillsTitle: 'Skills', diffNow: 'Current difficulty', accuracy: 'Accuracy', noData: 'Not played yet',
+    trendUp: 'Improving', trendFlat: 'Steady', trendDown: 'Slight dip',
+    breakTitle: 'Break reminder', breakDesc: 'A gentle nudge to rest after continuous play', off: 'Off', minShort: n => `${n} min`,
+    breakNow: 'Time for a short break!', breakText: 'The brain learns best with breaks. Stand up, drink some water and come back later.',
+    breakOk: 'I\'ll rest', breakMore: 'A bit more',
+    parentNote: 'The games are based on well-known exercises for working memory, attention and focus, and the difficulty adapts to the child. This kind of training mainly improves performance in the games themselves; it does not replace assessment, treatment or learning support.',
   });
   const t = (k, ...a) => { const v = STR[save.lang][k]; return typeof v === 'function' ? v(...a) : v; };
 
@@ -248,6 +279,35 @@
     ${r.newGame ? `<div class="badge">${t('newGame')}</div>` : ''}
     ${r.missions.map(m => `<div class="badge mission-badge">${CHECK}${missionText(m)}</div>`).join('')}`;
 
+  // ---------- Daily workout: three quick games with different skills ----------
+  const WORKOUT_BONUS = 40;
+  function ensureWorkout() {
+    if (save.workout && save.workout.date === today()) return save.workout;
+    const open = GAMES.filter(g => g.id !== 'simon' && g.minLevel <= playerLevel()).sort(() => Math.random() - 0.5);
+    const picked = [];
+    for (const g of open) if (picked.length < 3 && !picked.some(p => p.skill === g.skill)) picked.push(g);
+    save.workout = { date: today(), games: picked.map(g => g.id), done: [], claimed: false };
+    persist();
+    return save.workout;
+  }
+  const workoutNext = () => { const w = ensureWorkout(); return w.games.find(id => !w.done.includes(id)); };
+
+  // ---------- Adaptive difficulty and session history ----------
+  const MAX_DIFF = 10;
+  const difficulty = id => save.adapt[id] || 1;
+  // Logs a finished session and nudges the game's difficulty: step +1 (too easy), 0, or -1 (too hard)
+  function recordSession(id, score, acc, step = 0) {
+    const before = difficulty(id);
+    const after = Math.max(1, Math.min(MAX_DIFF, before + step));
+    save.adapt[id] = after;
+    save.history.push({ d: today(), g: id, s: score, a: Math.round(Math.max(0, Math.min(1, acc)) * 100), lv: before });
+    if (save.history.length > 400) save.history.splice(0, save.history.length - 400);
+    persist();
+    return { before, after };
+  }
+  const diffHtml = ch => ch.after > ch.before ? `<div class="badge diff-up">${t('diffUp', ch.after)}</div>`
+    : ch.after < ch.before ? `<p class="diff-note">${t('diffDown')}</p>` : `<p class="diff-note">${t('diffSame', ch.after)}</p>`;
+
   function updateCoinsDisplay() {
     document.querySelectorAll('[data-coins]').forEach(el => { el.textContent = save.coins; });
   }
@@ -326,7 +386,7 @@
       this.master.gain.value = 0.5;
       this.master.connect(this.ctx.destination);
     },
-    tone(freq, dur = 0.35, type = 'triangle', vol = 0.6, when = 0) {
+    tone(freq, dur = 0.35, type = 'triangle', vol = 0.6, when = 0, dest = this.master) {
       if (!save.sound || !this.ctx) return;
       const t0 = this.ctx.currentTime + when;
       const o = this.ctx.createOscillator(), g = this.ctx.createGain();
@@ -335,7 +395,7 @@
       g.gain.setValueAtTime(0.0001, t0);
       g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g); g.connect(this.master);
+      o.connect(g); g.connect(dest);
       o.start(t0); o.stop(t0 + dur + 0.05);
     },
     pad(i) { this.tone(PAD_FREQ[i], 0.45, 'triangle', 0.55); this.tone(PAD_FREQ[i] * 2, 0.25, 'sine', 0.1); },
@@ -355,7 +415,8 @@
     if (current === 'game' && name !== 'game') G.token++;
     if (current === 'mini' && miniCleanup) { miniCleanup(); miniCleanup = null; }
     current = name;
-    if (name === 'title') renderTitle();
+    if (name === 'title') { renderTitle(); if (breakDue && !modalResolve) setTimeout(breakReminder, 400); }
+    if (name === 'parents') renderParents();
     if (name === 'map') renderMap();
     if (name === 'shop') renderShop();
     if (name === 'settings') renderSettings();
@@ -382,12 +443,14 @@
     }).join('');
     const games = GAMES.map(g => {
       const open = g.minLevel <= L.lvl;
+      const art = (window.TZ.previews || {})[g.id] || `<span class="game-icon">${g.icon}</span>`;
       return `<button class="game-card${open ? '' : ' locked'}" style="--gc:${g.color}" data-game="${g.id}" ${open ? '' : `data-locked="${t('unlockAt', g.minLevel)}" aria-disabled="true"`}>
-        <span class="game-icon">${g.icon}</span>
-        <b>${gameName(g)}</b>
-        <small>${open ? (g.desc ? g.desc[save.lang] : t('g_' + g.id + '_d')) : t('unlockAt', g.minLevel)}</small>
-        ${open && save.bests[g.id] ? `<span class="best">${STAR(true)}${save.bests[g.id]}</span>` : ''}
-        ${open ? '' : `<span class="lock-badge">${LOCK}</span>`}
+        <span class="game-art">${art}
+          <span class="skill-tag">${t('sk_' + g.skill)}</span>
+          ${open && save.bests[g.id] ? `<span class="best">${STAR(true)}${save.bests[g.id]}</span>` : ''}
+          ${open ? '' : `<span class="lock-veil"><span class="lock-badge">${LOCK}</span>${t('unlockAt', g.minLevel)}</span>`}
+        </span>
+        <span class="game-info"><b>${gameName(g)}</b><small>${t('g_' + g.id + '_d')}</small></span>
       </button>`;
     }).join('');
     $('#screen-title').innerHTML = `
@@ -404,6 +467,7 @@
             <button class="btn small" data-go="shop">${BAG}${t('shop')}</button></div>
           <button class="hero-char" data-go="shop" aria-label="${t('shop')}">${charWrap('')}</button>
         </div>
+        ${workoutCard()}
         <h3 class="sec">${t('missions')}</h3>
         <div class="missions">${missions}</div>
         <h3 class="sec">${t('games')}</h3>
@@ -416,6 +480,25 @@
             <div class="bar"><i style="width:${pct}%;background:${g.color}"></i></div><small>${pct}%</small></div>`;
         }).join('')}<p class="hint">${t('brainHint')}</p></div>
       </div>`;
+  }
+
+  function workoutCard() {
+    const w = ensureWorkout();
+    if (!w.games.length) return '';
+    const steps = w.games.map(id => {
+      const g = GAMES.find(x => x.id === id);
+      const done = w.done.includes(id);
+      return `<div class="wk-step${done ? ' done' : ''}" style="--gc:${g.color}"><span class="game-icon">${g.icon}</span>
+        <small>${t('sk_' + g.skill)}</small>${done ? `<span class="wk-check">${CHECK}</span>` : ''}</div>`;
+    }).join('');
+    const next = workoutNext();
+    return `<div class="workout">
+      <div class="wk-head"><div><b>${t('wk_title')}</b><small>${t('wk_desc')}</small></div>
+        <span class="pill">${DROP}+${WORKOUT_BONUS}</span></div>
+      <div class="wk-steps">${steps}</div>
+      ${next ? `<button class="btn primary" data-workout>${PLAY}${w.done.length ? t('wk_continue') : t('wk_start')}</button>`
+        : `<div class="wk-complete">${CHECK}${t('wk_doneShort')}</div>`}
+    </div>`;
   }
 
   // Daily return reward, grows with the streak
@@ -535,12 +618,86 @@
     const tog = k => `<button class="toggle" data-toggle="${k}" aria-pressed="${save[k]}" aria-label="${t('s_' + k)}"></button>`;
     const row = k => `<div class="setting"><div class="info"><b>${t('s_' + k)}</b><small>${t('s_' + k + '_d')}</small></div>${tog(k)}</div>`;
     $('#screen-settings').innerHTML = topbar(t('settings')) + `<div class="scroll">
+      <div class="setting"><div class="info"><b>${t('parents')}</b><small>${t('parents_d')}</small></div>
+        <button class="btn small primary" data-act="parents">${LOCK}${t('parents')}</button></div>
       ${['sound', 'vibe', 'assist', 'shapes'].map(row).join('')}
       <div class="setting"><div class="info"><b>${t('s_lang')}</b></div>
         <div class="seg"><button data-lang="he" aria-pressed="${save.lang === 'he'}">עברית</button><button data-lang="en" aria-pressed="${save.lang === 'en'}">English</button></div></div>
       <div class="setting"><div class="info"><b class="danger">${t('s_reset')}</b><small>${t('s_reset_d')}</small></div>
         <button class="btn small" data-act="reset">${t('s_reset')}</button></div>
       <div class="about">${t('about')}</div></div>`;
+  }
+
+  // ---------- Parents area ----------
+  // A multiplication question keeps young children out (a common "parental gate")
+  async function parentGate() {
+    const a = 6 + rand(4), b = 6 + rand(4), ans = a * b;
+    const opts = [ans, ans + a, ans - b, ans + 10].sort(() => Math.random() - 0.5);
+    const r = await modal(`<h2>${t('pgTitle')}</h2><p class="big-num">${t('pgQ', a, b)}</p>`,
+      opts.map(o => ({ id: String(o), label: String(o) })).concat({ id: 'no', label: t('no') }));
+    if (r === String(ans)) return true;
+    if (r && r !== 'no') toast(t('pgWrong'));
+    return false;
+  }
+
+  const dayKey = d => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  const spark = (vals, color) => {
+    if (vals.length < 2) return '';
+    const w = 120, h = 34, max = Math.max(...vals, 1), min = Math.min(...vals, 0);
+    const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - 3 - ((v - min) / (max - min || 1)) * (h - 6)}`).join(' ');
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  };
+
+  function renderParents() {
+    const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return d; });
+    const keys = days.map(dayKey);
+    const mins = keys.map(k => Math.round((save.playSecs[k] || 0) / 60));
+    const week = save.history.filter(h => keys.includes(h.d));
+    const maxMin = Math.max(...mins, 10);
+    const chart = days.map((d, i) => `<div class="day"><div class="col"><i style="height:${Math.round(100 * mins[i] / maxMin)}%"></i></div>
+      <small>${mins[i]}</small><span>${t('dayNames')[d.getDay()]}</span></div>`).join('');
+    const skills = GAMES.map(g => {
+      const hs = save.history.filter(h => h.g === g.id);
+      if (!hs.length) return `<div class="p-skill"><div class="p-head"><span class="skill-dot" style="background:${g.color}"></span><b>${t('sk_' + g.skill)}</b><small>${gameName(g)}</small></div><p class="muted">${t('noData')}</p></div>`;
+      const last = hs.slice(-5), prev = hs.slice(-10, -5);
+      const avg = a => a.reduce((s, h) => s + h.a, 0) / a.length;
+      const nowAcc = Math.round(avg(last));
+      const trend = !prev.length ? 'flat' : avg(last) - avg(prev) > 4 || last[last.length - 1].lv > prev[prev.length - 1].lv ? 'up' : avg(prev) - avg(last) > 8 ? 'down' : 'flat';
+      return `<div class="p-skill"><div class="p-head"><span class="skill-dot" style="background:${g.color}"></span><b>${t('sk_' + g.skill)}</b><small>${gameName(g)}</small>
+          <span class="trend ${trend}">${t('trend' + trend[0].toUpperCase() + trend.slice(1))}</span></div>
+        <div class="p-row"><div><small>${t('diffNow')}</small><div class="dots">${Array.from({ length: MAX_DIFF }, (_, i) => `<i class="${i < difficulty(g.id) ? 'on' : ''}" style="--dc:${g.color}"></i>`).join('')}</div></div>
+          <div><small>${t('accuracy')}</small><b>${nowAcc}%</b></div><div><small>${t('sessions')}</small><b>${hs.length}</b></div></div>
+        ${spark(hs.slice(-12).map(h => h.lv * 10 + h.a / 10), g.color)}</div>`;
+    }).join('');
+    const opts = [0, 15, 20, 30].map(m => `<button data-break="${m}" aria-pressed="${save.breakMin === m}">${m ? t('minShort', m) : t('off')}</button>`).join('');
+    $('#screen-parents').innerHTML = topbar(t('parents')) + `<div class="scroll">
+      <h3 class="sec">${t('week')}</h3>
+      <div class="p-stats"><div><b>${mins.filter(m => m > 0).length}/7</b><small>${t('daysActive')}</small></div>
+        <div><b>${mins.reduce((a, b) => a + b, 0)}</b><small>${t('minutes')}</small></div><div><b>${week.length}</b><small>${t('sessions')}</small></div></div>
+      <div class="p-chart">${chart}</div>
+      <h3 class="sec">${t('skillsTitle')}</h3>${skills}
+      <h3 class="sec">${t('breakTitle')}</h3>
+      <div class="setting"><div class="info"><small>${t('breakDesc')}</small></div><div class="seg">${opts}</div></div>
+      <p class="p-note">${t('parentNote')}</p></div>`;
+  }
+
+  // ---------- Play time and break reminder ----------
+  let sessionSecs = 0, breakDue = false;
+  setInterval(() => {
+    if (document.hidden || !(current === 'game' || current === 'mini')) return;
+    const k = today();
+    save.playSecs[k] = (save.playSecs[k] || 0) + 1;
+    sessionSecs++;
+    if (sessionSecs % 15 === 0) persist();
+    if (save.breakMin && sessionSecs >= save.breakMin * 60) breakDue = true;
+  }, 1000);
+  // Shown when the child is back on the home screen, never in the middle of a game
+  async function breakReminder() {
+    breakDue = false;
+    const r = await modal(`${charWrap('happy')}<h2>${t('breakNow')}</h2><p>${t('breakText')}</p>`,
+      [{ id: 'rest', label: t('breakOk'), cls: 'primary' }, { id: 'more', label: t('breakMore') }]);
+    // "A bit more" asks again after 5 minutes of play; resting starts a fresh count
+    sessionSecs = r === 'more' ? save.breakMin * 60 - 300 : 0;
   }
 
   function applyLang() {
@@ -830,6 +987,9 @@
     const k = key(G.w, G.l);
     save.stars[k] = Math.max(starsOf(G.w, G.l), stars);
     const simonDone = track('simon');
+    // The Sound Journey's difficulty is its map position: 30 levels shown on the 1–10 scale
+    save.adapt.simon = Math.max(difficulty('simon'), Math.min(MAX_DIFF, 1 + Math.floor((G.w * LEVELS + G.l + 1) / 3)));
+    recordSession('simon', G.score, G.cfg.rounds / (G.cfg.rounds + G.mistakes));
     const reward = grant('simon', G.score, 5 + stars * 8 + (G.cfg.boss ? 20 : 0), 20 + stars * 5);
     reward.missions.unshift(...simonDone);
     const worldDone = G.cfg.boss;
@@ -850,6 +1010,7 @@
   }
 
   async function levelFail() {
+    recordSession('simon', G.score, G.round / (G.round + G.mistakes));
     const r = await modal(`${charWrap('')}<h2>${t('failTitle')}</h2><p>${t('failText')}</p>`,
       [{ id: 'retry', label: t('retry'), cls: 'primary' }, { id: 'map', label: t('map') }]);
     if (r === 'retry') startLevel(G.w, G.l); else show('map');
@@ -859,6 +1020,7 @@
     const len = G.seq.length - 1;
     const isBest = G.score > save.best;
     if (isBest) { save.best = G.score; persist(); confetti(50); Sound.win(); }
+    recordSession('simon', G.score, G.round / (G.round + 1));
     const reward = grant('simon', G.score, 3 + Math.floor(G.score / 40), 10 + Math.floor(G.score / 20));
     const r = await modal(`<h2>${t('endlessOver')}</h2><div class="big-num">${G.score}</div><p>${t('endlessLen', Math.max(0, len))}</p>
       ${isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.best}</p>`}${rewardHtml(reward)}`,
@@ -871,7 +1033,7 @@
   const Mini = {
     open(game) {
       $('#screen-mini').innerHTML = `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button>
-        <div class="hud-title">${gameName(game)}</div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
+        <div class="hud-title">${gameName(game)}<small class="diff-chip">${t('diffLabel', difficulty(game.id))}</small></div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
         <div class="timebar" id="mini-time"><i></i></div><div class="mini-area" id="mini-area"></div>`;
       show('mini');
       miniBack = () => show('title');
@@ -886,16 +1048,33 @@
     },
     // The game's stop function; runs when the player leaves the screen
     onLeave(fn) { miniCleanup = fn; },
-    async finish(game, score, coins, xp, lines = '') {
+    // perf: { acc: 0..1, step: -1 | 0 | 1 } decided by the game from how the session went
+    async finish(game, score, coins, xp, lines = '', perf = { acc: 1, step: 0 }) {
       if (miniCleanup) { miniCleanup(); miniCleanup = null; }
+      const ch = recordSession(game.id, score, perf.acc, perf.step);
+      lines += diffHtml(ch);
+      // Workout progress: this game counts once per day toward the daily workout
+      const w = ensureWorkout();
+      let wkLine = '';
+      if (w.games.includes(game.id) && !w.done.includes(game.id)) {
+        w.done.push(game.id);
+        if (w.done.length === w.games.length && !w.claimed) {
+          w.claimed = true;
+          coins += WORKOUT_BONUS;
+          wkLine = `<div class="badge mission-badge">${CHECK}${t('wk_done')}</div>`;
+        }
+      }
       const reward = grant(game.id, score, coins, xp);
       Sound.win();
-      if (reward.isBest) confettiAt(document.body, 50);
+      if (reward.isBest || wkLine) confettiAt(document.body, 50);
       const praise = t('praise');
-      const r = await modal(`<h2>${praise[rand(praise.length)]}</h2><div class="big-num">${score}</div>${lines}
-        ${reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id]}</p>`}${rewardHtml(reward)}`,
-        [{ id: 'again', label: t('again'), cls: 'primary' }, { id: 'home', label: t('home') }]);
-      if (r === 'again') game.start(); else show('title');
+      const next = w.games.includes(game.id) ? workoutNext() : null;
+      const r = await modal(`<h2>${score > 0 ? praise[rand(praise.length)] : t('failTitle')}</h2><div class="big-num">${score}</div>${lines}
+        ${reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id] || 0}</p>`}${rewardHtml(reward)}${wkLine}`,
+        [next ? { id: 'wk', label: t('wk_next', w.done.length + 1, w.games.length), cls: 'primary' } : null,
+          { id: 'again', label: t('again'), cls: next ? '' : 'primary' }, { id: 'home', label: t('home') }].filter(Boolean));
+      if (r === 'wk') GAMES.find(g => g.id === next).start();
+      else if (r === 'again') game.start(); else show('title');
     },
   };
 
@@ -905,7 +1084,7 @@
   });
 
   window.TZ = {
-    $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini,
+    $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini, difficulty,
     registerGame: g => GAMES.push(g),
     addStrings: (he, en) => { Object.assign(STR.he, he); Object.assign(STR.en, en); },
   };
@@ -915,6 +1094,7 @@
     if (modalResolve) { closeModal(current === 'game' ? 'map' : null); return; }
     if (current === 'game') show(G.endless ? 'title' : 'map');
     else if (current === 'mini' && miniBack) miniBack();
+    else if (current === 'parents') show('settings');
     else if (current !== 'title') show('title');
   }
 
@@ -953,6 +1133,7 @@
     if (d.tab) { shopTab = d.tab; return renderShop(); }
     if (d.claim) return claimMission(Number(d.claim));
     if (d.game) { const g = GAMES.find(x => x.id === d.game); if (g) return g.start(); }
+    if (el.hasAttribute('data-workout')) { const id = workoutNext(); if (id) return GAMES.find(g => g.id === id).start(); }
     if (d.toggle) {
       save[d.toggle] = !save[d.toggle]; persist();
       document.body.classList.toggle('shapes', save.shapes);
@@ -960,6 +1141,8 @@
     }
     if (d.lang) { save.lang = d.lang; persist(); applyLang(); return renderSettings(); }
     if (d.act === 'endless') return startEndless();
+    if (d.act === 'parents') { if (await parentGate()) show('parents'); return; }
+    if (d.break) { save.breakMin = Number(d.break); persist(); return renderParents(); }
     if (d.act === 'reset') {
       const r = await modal(`<h2>${t('resetQ')}</h2>`, [{ id: 'yes', label: t('yes'), cls: 'primary' }, { id: 'no', label: t('no') }]);
       if (r === 'yes') {

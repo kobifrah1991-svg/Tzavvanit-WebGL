@@ -52,8 +52,8 @@
         <div class="word-card"><div class="word" id="st-word"></div></div>
         <div class="choice-grid" dir="ltr">${STROOP_COLORS.map((c, i) => `<button class="choice" data-raw data-i="${i}" style="--cc:${c}" aria-label="${t('colorNames')[i]}"><svg class="shape" viewBox="0 0 24 24">${SHAPES[i]}</svg></button>`).join('')}</div>
       </div>`;
-      const TOTAL = 45;
-      let left = TOTAL, score = 0, streak = 0, right = 0, rule = 'ink', sinceFlip = 0, word = 0, ink = 0, over = false;
+      const TOTAL = 45, d = TZ.difficulty('stroop');
+      let left = TOTAL, score = 0, streak = 0, right = 0, wrong = 0, rule = 'ink', sinceFlip = 0, word = 0, ink = 0, over = false;
       const wordEl = $('#st-word'), ruleEl = $('#st-rule');
       const setRule = flip => {
         ruleEl.textContent = t(rule === 'ink' ? 'st_ink' : 'st_word');
@@ -62,7 +62,8 @@
       };
       const next = () => {
         word = rand(4);
-        ink = Math.random() < 0.75 ? (word + 1 + rand(3)) % 4 : word;
+        // Higher difficulty: more conflicting word/ink pairs
+        ink = Math.random() < 0.55 + d * 0.03 ? (word + 1 + rand(3)) % 4 : word;
         wordEl.textContent = t('colorNames')[word];
         wordEl.style.color = STROOP_COLORS[ink];
         wordEl.classList.remove('in'); void wordEl.offsetWidth; wordEl.classList.add('in');
@@ -76,14 +77,14 @@
           Sound.tone(660 + streak * 20, 0.12, 'triangle', 0.4);
           vibrate(10);
         } else {
-          streak = 0; left -= 3;
+          streak = 0; wrong++; left -= 2 + d * 0.2;
           Sound.fail(); vibrate([30, 30, 30]);
           shake(wordEl.parentElement);
         }
         Mini.score(score);
         Mini.extra(comboHtml(streak));
-        // After a warm-up, the rule flips every 6–9 correct answers
-        if (right >= 8 && sinceFlip >= 6 + rand(4)) { rule = rule === 'ink' ? 'word' : 'ink'; sinceFlip = 0; setRule(true); }
+        // After a warm-up the rule flips; higher difficulty flips sooner and more often
+        if (right >= Math.max(3, 11 - d) && sinceFlip >= Math.max(3, 8 - Math.floor(d / 2)) + rand(3)) { rule = rule === 'ink' ? 'word' : 'ink'; sinceFlip = 0; setRule(true); }
         next();
       };
       area.querySelectorAll('.choice').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); answer(Number(b.dataset.i)); }));
@@ -94,7 +95,9 @@
         Mini.time(left / TOTAL);
         if (left <= 0 && !over) {
           over = true;
-          Mini.finish(stroop, score, 5 + Math.floor(score / 25), 10 + Math.floor(score / 15), `<p>${t('correct', right)}</p>`);
+          const acc = right / (right + wrong || 1);
+          Mini.finish(stroop, score, 5 + Math.floor(score / 25), 10 + Math.floor(score / 15), `<p>${t('correct', right)}</p>`,
+            { acc, step: acc >= 0.9 && right >= 12 ? 1 : acc < 0.7 || right < 6 ? -1 : 0 });
         }
       }, 100);
       Mini.onLeave(() => { over = true; clearInterval(timer); document.removeEventListener('keydown', onKey); });
@@ -123,8 +126,9 @@
       resize();
       window.addEventListener('resize', resize);
 
-      let basketX = W / 2, score = 0, streak = 0, lives = 3, target = rand(4), over = false;
-      let drops = [], sparks = [], spawnIn = 0, elapsed = 0, nextSwitch = 15, last = performance.now(), raf = 0, flash = 0;
+      const lvl = TZ.difficulty('rain'), period = Math.max(8, 18 - lvl);
+      let basketX = W / 2, score = 0, streak = 0, lives = 3, target = rand(4), over = false, caught = 0, missed = 0;
+      let drops = [], sparks = [], spawnIn = 0, elapsed = 0, nextSwitch = period, last = performance.now(), raf = 0, flash = 0;
       const targetEl = $('#rain-target');
       const showTarget = isNew => {
         targetEl.innerHTML = `${t('rain_catch')} <span class="dot" style="background:${STROOP_COLORS[target]}"></span>`;
@@ -156,7 +160,9 @@
         if (over) return;
         over = true;
         cancelAnimationFrame(raf);
-        Mini.finish(rain, score, 5 + Math.floor(score / 20), 10 + Math.floor(score / 12));
+        const acc = caught / (caught + missed || 1);
+        Mini.finish(rain, score, 5 + Math.floor(score / 20), 10 + Math.floor(score / 12), '',
+          { acc, step: elapsed >= 45 && acc >= 0.6 ? 1 : elapsed < 20 ? -1 : 0 });
       };
 
       const frame = now => {
@@ -164,14 +170,14 @@
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
         elapsed += dt;
-        const speed = 120 + elapsed * 4;
-        if (elapsed >= nextSwitch) { target = (target + 1 + rand(3)) % 4; nextSwitch += 15; showTarget(true); }
+        const speed = 100 + lvl * 12 + elapsed * (2 + lvl * 0.4);
+        if (elapsed >= nextSwitch) { target = (target + 1 + rand(3)) % 4; nextSwitch += period; showTarget(true); }
         spawnIn -= dt;
         if (spawnIn <= 0) {
-          spawnIn = Math.max(0.35, 0.9 - elapsed * 0.01);
+          spawnIn = Math.max(0.35, 1 - lvl * 0.05 - elapsed * 0.01);
           const gold = Math.random() < 0.04;
-          // Keep roughly 40% of drops in the target color so there is always something to catch
-          const color = gold ? -1 : Math.random() < 0.4 ? target : rand(4);
+          // Enough drops in the target color to always have something to catch; fewer at higher difficulty
+          const color = gold ? -1 : Math.random() < 0.45 - lvl * 0.015 ? target : rand(4);
           drops.push({ x: 20 + Math.random() * (W - 40), y: -20, r: 11, color, vy: speed * (0.8 + Math.random() * 0.4) });
         }
         const bw = Math.max(70, W * 0.22), by = H - 46;
@@ -180,13 +186,13 @@
           if (!d.done && d.y + d.r >= by && d.y < by + 20 && Math.abs(d.x - basketX) < bw / 2) {
             d.done = true;
             if (d.color === -1) { score += 50; Sound.arp([0, 7, 12], 0.05); popText(box, '+50', 'good'); }
-            else if (d.color === target) { streak++; score += 10 * multOf(streak); Sound.tone(700 + Math.min(streak, 12) * 30, 0.1, 'triangle', 0.35); }
+            else if (d.color === target) { streak++; caught++; score += 10 * multOf(streak); Sound.tone(700 + Math.min(streak, 12) * 30, 0.1, 'triangle', 0.35); }
             else { streak = 0; lives--; flash = 0.25; Sound.fail(); vibrate(60); }
             for (let k = 0; k < 8; k++) sparks.push({ x: d.x, y: by, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 160, life: 0.5, color: d.color === -1 ? '#ffd700' : STROOP_COLORS[d.color] });
             hud();
             if (lives <= 0) return end();
           }
-          if (!d.done && d.y > H + 20) { d.done = true; if (d.color === target) { streak = 0; hud(); } }
+          if (!d.done && d.y > H + 20) { d.done = true; if (d.color === target) { streak = 0; missed++; hud(); } }
         }
         drops = drops.filter(d => !d.done);
         sparks = sparks.filter(s => (s.life -= dt) > 0);
@@ -229,7 +235,9 @@
     icon: `<svg viewBox="0 0 48 48"><path d="M18 4h12v4h-2v10l12 20a4 4 0 0 1-3.5 6h-25A4 4 0 0 1 8 38l12-20V8h-2z" fill="#fff"/><path d="M13 30h22l5 8a4 4 0 0 1-3.5 6h-25A4 4 0 0 1 8 38z" fill="#8e44d6"/></svg>`,
     start() {
       const area = Mini.open(lab);
-      const ROUNDS = 10, PER = 12;
+      // Higher difficulty: less time per mix and the harder recipes (gray, maroon) join in
+      const lvl = TZ.difficulty('lab'), ROUNDS = 10, PER = Math.max(5, 14 - lvl);
+      const pool = RECIPES.slice(0, lvl <= 2 ? 3 : lvl <= 4 ? 5 : RECIPES.length);
       area.innerHTML = `<div class="lab">
         <div class="rule" id="lab-round"></div>
         <div class="lab-stage"><div class="target-blob" id="lab-target"></div><div class="lab-eq" id="lab-eq"></div></div>
@@ -241,10 +249,11 @@
       const nextRound = () => {
         if (round >= ROUNDS) {
           over = true;
-          return Mini.finish(lab, score, 5 + Math.floor(score / 20), 15 + Math.floor(score / 12), `<p>${t('correct', right)}</p>`);
+          return Mini.finish(lab, score, 5 + Math.floor(score / 20), 15 + Math.floor(score / 12), `<p>${t('correct', right)}</p>`,
+            { acc: right / ROUNDS, step: right >= 9 ? 1 : right <= 5 ? -1 : 0 });
         }
-        if (!order.length) order = RECIPES.map((_, i) => i).sort(() => Math.random() - 0.5);
-        recipe = RECIPES[order.pop()];
+        if (!order.length) order = pool.map((_, i) => i).sort(() => Math.random() - 0.5);
+        recipe = pool[order.pop()];
         round++; left = PER; picked = []; busy = false;
         paints.forEach(p => p.classList.remove('sel'));
         $('#lab-round').textContent = t('lab_round', round, ROUNDS);
@@ -295,9 +304,11 @@
       const area = Mini.open(pairs);
       Mini.time(null);
       const palette = ['#ff6f59', '#ffb627', '#2ec4b6', '#3a86ff'];
-      // 8 symbols: each shape in two colors
-      const symbols = [];
-      for (let s = 0; s < 4; s++) symbols.push([s, palette[s]], [s, palette[(s + 2) % 4]]);
+      // Difficulty sets the board: 6, 8 or 10 pairs, plus a short peek at the start for beginners
+      const lvl = TZ.difficulty('pairs'), N = lvl <= 3 ? 6 : lvl <= 6 ? 8 : 10;
+      const all = [];
+      for (let s = 0; s < 4; s++) for (let c = 0; c < 4; c++) all.push([s, palette[c]]);
+      const symbols = all.sort(() => Math.random() - 0.5).slice(0, N);
       const deck = symbols.concat(symbols).map((v, i) => ({ v, id: i, key: `${v[0]}${v[1]}` })).sort(() => Math.random() - 0.5);
       area.innerHTML = `<div class="pairs" dir="ltr">${deck.map((c, i) => `<button class="card" data-raw data-i="${i}" aria-label="card"><span class="face back"></span><span class="face front"><svg viewBox="0 0 24 24" style="fill:${c.v[1]}">${SHAPES[c.v[0]]}</svg></span></button>`).join('')}</div>`;
       const cards = [...area.querySelectorAll('.card')];
@@ -320,11 +331,13 @@
           cards[a].classList.add('done'); cards[b].classList.add('done');
           Sound.success();
           Mini.score(matched * 50);
-          if (matched === 8) {
+          if (matched === N) {
             over = true;
             clearInterval(timer);
-            const score = Math.max(100, 900 - moves * 15 - secs * 4);
-            setTimeout(() => Mini.finish(pairs, score, 5 + Math.floor(score / 25), 15 + Math.floor(score / 15), `<p>${t('pairs_moves', moves)} · ${t('pairs_time', secs)}</p>`), 500);
+            const score = Math.max(100, N * 110 - moves * 15 - secs * 4);
+            const ratio = moves / N;
+            setTimeout(() => Mini.finish(pairs, score, 5 + Math.floor(score / 25), 15 + Math.floor(score / 15), `<p>${t('pairs_moves', moves)} · ${t('pairs_time', secs)}</p>`,
+              { acc: Math.min(1, N / moves), step: ratio <= 1.6 ? 1 : ratio >= 2.6 ? -1 : 0 }), 500);
           }
         } else {
           lock = true;
@@ -335,6 +348,11 @@
       const timer = setInterval(() => { secs++; }, 1000);
       Mini.onLeave(() => { over = true; clearInterval(timer); });
       hud();
+      if (lvl <= 2) {
+        lock = true;
+        cards.forEach(c => c.classList.add('up'));
+        setTimeout(() => { cards.forEach(c => c.classList.remove('up')); lock = false; }, 1600);
+      }
     },
   };
 
