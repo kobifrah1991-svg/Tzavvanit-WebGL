@@ -4,13 +4,25 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const rand = n => Math.floor(Math.random() * n);
 
+  // ---------- Players (several children can share one device) ----------
+  const PROFILES_KEY = 'tzavvanit_profiles';
+  let profiles = { list: [{ id: 'p1', name: '', age: 0, color: 0 }], current: 'p1' };
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILES_KEY) || 'null');
+    if (p && Array.isArray(p.list) && p.list.length) profiles = p;
+  } catch (e) { /* storage unavailable */ }
+  const saveProfiles = () => { try { localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); } catch (e) { /* ignore */ } };
+  // The first player keeps the original key, so saves from before profiles still load
+  const keyFor = id => id === 'p1' ? 'tzavvanit_save_v1' : `tzavvanit_save_v1:${id}`;
+  const me = () => profiles.list.find(p => p.id === profiles.current) || profiles.list[0];
+
   // ---------- Save ----------
-  const SAVE_KEY = 'tzavvanit_save_v1';
+  const SAVE_KEY = keyFor(me().id);
   const defaults = () => ({
     stars: {}, best: 0, hat: 'none', skin: 'peach', lang: 'he', sound: true, vibe: true, assist: false, shapes: false, seenIntro: {},
     coins: 0, xp: 0, owned: { hats: ['none'], skins: ['peach'] }, bests: {}, played: 0,
     daily: null, streak: { last: '', count: 0 }, migrated: true, workout: null,
-    adapt: {}, history: [], playSecs: {}, breakMin: 20,
+    adapt: {}, history: [], playSecs: {}, breakMin: 20, assessments: [],
   });
   const save = defaults();
   let loaded = {};
@@ -152,7 +164,23 @@
     breakOk: 'I\'ll rest', breakMore: 'A bit more',
     parentNote: 'The games are based on well-known exercises for working memory, attention and focus, and the difficulty adapts to the child. This kind of training mainly improves performance in the games themselves; it does not replace assessment, treatment or learning support.',
   });
+  Object.assign(STR.he, {
+    players: 'מי משחק?', player: n => `שחקן ${n}`, addPlayer: 'הוספת שחקן', playerName: 'שם', age: 'גיל', ageN: n => `גיל ${n}`,
+    create: 'יצירה', switchTo: 'לשחק', current: 'משחק עכשיו', delPlayer: 'מחיקה', delQ: n => `למחוק את ${n} וכל ההתקדמות שלו?`,
+    nameNeeded: 'כתבו שם', maxPlayers: 'אפשר עד 40 שחקנים במכשיר',
+    edu: 'דוחות ומבדקים', eduAll: 'כל השחקנים במכשיר', lastActive: 'פעילות אחרונה', lastTest: 'מבדק אחרון', never: '—',
+    exportCsv: 'ייצוא נתונים (CSV)', exported: 'הקובץ נשמר', openReport: 'דוח המבדק האחרון', noReport: 'עוד לא בוצע מבדק',
+  });
+  Object.assign(STR.en, {
+    players: 'Who\'s playing?', player: n => `Player ${n}`, addPlayer: 'Add player', playerName: 'Name', age: 'Age', ageN: n => `Age ${n}`,
+    create: 'Create', switchTo: 'Play', current: 'Playing now', delPlayer: 'Delete', delQ: n => `Delete ${n} and all their progress?`,
+    nameNeeded: 'Enter a name', maxPlayers: 'Up to 40 players per device',
+    edu: 'Reports and assessments', eduAll: 'All players on this device', lastActive: 'Last active', lastTest: 'Last assessment', never: '—',
+    exportCsv: 'Export data (CSV)', exported: 'File saved', openReport: 'Latest assessment report', noReport: 'No assessment yet',
+  });
   const t = (k, ...a) => { const v = STR[save.lang][k]; return typeof v === 'function' ? v(...a) : v; };
+  const playerName = p => p.name || t('player', profiles.list.indexOf(p) + 1);
+  const AVATAR_COLORS = ['#ff6f59', '#2ec4b6', '#3a86ff', '#ffb627', '#9b6dff', '#22b04b', '#ff8a3d', '#e85d8a'];
 
   // ---------- Data ----------
   const WORLDS = [
@@ -417,6 +445,7 @@
     current = name;
     if (name === 'title') { renderTitle(); if (breakDue && !modalResolve) setTimeout(breakReminder, 400); }
     if (name === 'parents') renderParents();
+    if (name === 'players') renderPlayers();
     if (name === 'map') renderMap();
     if (name === 'shop') renderShop();
     if (name === 'settings') renderSettings();
@@ -462,12 +491,14 @@
       </header>
       <div class="scroll hub">
         <div class="hub-hero">
-          <div><div class="logo small">${logo}</div>
+          <div><button class="player-chip" data-go="players">${avatar(me())}<span>${esc(playerName(me()))}</span></button>
+            <div class="logo small">${logo}</div>
             ${save.streak.count > 1 ? `<div class="streak">${FLAME}${t('streakDays', save.streak.count)}</div>` : `<div class="sub">${t('subtitle')}</div>`}
             <button class="btn small" data-go="shop">${BAG}${t('shop')}</button></div>
           <button class="hero-char" data-go="shop" aria-label="${t('shop')}">${charWrap('')}</button>
         </div>
         ${workoutCard()}
+        ${(window.TZ.hubCards || []).map(f => f()).join('')}
         <h3 class="sec">${t('missions')}</h3>
         <div class="missions">${missions}</div>
         <h3 class="sec">${t('games')}</h3>
@@ -499,6 +530,96 @@
       ${next ? `<button class="btn primary" data-workout>${PLAY}${w.done.length ? t('wk_continue') : t('wk_start')}</button>`
         : `<div class="wk-complete">${CHECK}${t('wk_doneShort')}</div>`}
     </div>`;
+  }
+
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const avatar = p => `<span class="avatar" style="background:${AVATAR_COLORS[p.color % AVATAR_COLORS.length]}">${esc([...playerName(p)][0])}</span>`;
+
+  function renderPlayers() {
+    const rows = profiles.list.map(p => {
+      const cur = p.id === profiles.current;
+      return `<div class="player-row${cur ? ' current' : ''}">${avatar(p)}
+        <div class="info"><b>${esc(playerName(p))}</b><small>${p.age ? t('ageN', p.age) : ''}</small></div>
+        ${cur ? `<span class="tag on">${t('current')}</span>` : `<button class="btn small" data-switch="${p.id}">${t('switchTo')}</button>
+          <button class="icon-btn danger" data-del="${p.id}" aria-label="${t('delPlayer')}">×</button>`}
+      </div>`;
+    }).join('');
+    const ages = Array.from({ length: 13 }, (_, i) => i + 4).map(a => `<option value="${a}">${a}</option>`).join('');
+    $('#screen-players').innerHTML = topbar(t('players')) + `<div class="scroll">
+      <div class="player-list">${rows}</div>
+      <h3 class="sec">${t('addPlayer')}</h3>
+      <div class="setting add-player">
+        <label><small>${t('playerName')}</small><input id="pl-name" maxlength="16" autocomplete="off"></label>
+        <label><small>${t('age')}</small><select id="pl-age"><option value="0">—</option>${ages}</select></label>
+        <button class="btn small primary" data-act="add-player">${t('create')}</button>
+      </div></div>`;
+  }
+
+  // Switching player reloads the app so every screen reads the other child's save
+  function switchPlayer(id) {
+    profiles.current = id;
+    saveProfiles();
+    location.reload();
+  }
+  function addPlayer() {
+    const name = $('#pl-name').value.trim();
+    if (!name) { vibrate(30); return toast(t('nameNeeded')); }
+    if (profiles.list.length >= 40) return toast(t('maxPlayers'));
+    // The very first child just names the default profile instead of adding a second one
+    if (profiles.list.length === 1 && !profiles.list[0].name) {
+      Object.assign(profiles.list[0], { name, age: Number($('#pl-age').value) });
+      saveProfiles();
+      return renderPlayers();
+    }
+    const id = `p${Date.now().toString(36)}`;
+    profiles.list.push({ id, name, age: Number($('#pl-age').value), color: profiles.list.length });
+    switchPlayer(id);
+  }
+  async function deletePlayer(id) {
+    const p = profiles.list.find(x => x.id === id);
+    if (!p || id === profiles.current) return;
+    const r = await modal(`<h2>${t('delQ', esc(playerName(p)))}</h2>`, [{ id: 'yes', label: t('yes'), cls: 'primary' }, { id: 'no', label: t('no') }]);
+    if (r !== 'yes') return;
+    profiles.list = profiles.list.filter(x => x.id !== id);
+    try { localStorage.removeItem(keyFor(id)); } catch (e) { /* ignore */ }
+    saveProfiles();
+    renderPlayers();
+  }
+
+  // Reads another player's save without switching (for the educators' overview and export)
+  const readSave = id => { if (id === profiles.current) return save; try { return JSON.parse(localStorage.getItem(keyFor(id)) || '{}'); } catch (e) { return {}; } };
+
+  function exportCsv() {
+    const rows = [['player', 'age', 'type', 'date', 'game_or_test', 'score', 'accuracy_pct', 'difficulty', 'metric', 'value']];
+    for (const p of profiles.list) {
+      const s = readSave(p.id);
+      for (const h of s.history || []) rows.push([playerName(p), p.age || '', 'session', h.d, h.g, h.s, h.a, h.lv, '', '']);
+      for (const a of s.assessments || []) for (const [k, v] of Object.entries(a.m || {})) rows.push([playerName(p), a.age || p.age || '', 'assessment', a.d, 'assessment', '', '', '', k, v]);
+    }
+    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `tzavvanit-${today()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    toast(t('exported'));
+  }
+
+  function eduSection() {
+    const rows = profiles.list.map(p => {
+      const s = readSave(p.id);
+      const num = k => k.split('-').reduce((acc, v) => acc * 100 + Number(v), 0);
+      const days = Object.keys(s.playSecs || {}).sort((a, b) => num(b) - num(a));
+      const lastTest = (s.assessments || []).slice(-1)[0];
+      return `<tr><td>${avatar(p)} ${esc(playerName(p))}</td><td>${p.age || ''}</td><td>${(s.history || []).length}</td><td>${days[0] || t('never')}</td><td>${lastTest ? lastTest.d : t('never')}</td></tr>`;
+    }).join('');
+    const hasReport = (save.assessments || []).length > 0;
+    return `<h3 class="sec">${t('edu')}</h3>
+      <div class="edu-actions">
+        <button class="btn small${hasReport ? ' primary' : ''}" data-act="report" ${hasReport ? '' : `data-locked="${t('noReport')}" aria-disabled="true"`}>${t('openReport')}</button>
+        <button class="btn small" data-act="export">${t('exportCsv')}</button>
+      </div>
+      <h3 class="sec">${t('eduAll')}</h3>
+      <div class="edu-table-wrap"><table class="edu-table"><thead><tr><th>${t('playerName')}</th><th>${t('age')}</th><th>${t('sessions')}</th><th>${t('lastActive')}</th><th>${t('lastTest')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   // Daily return reward, grows with the streak
@@ -675,6 +796,7 @@
       <div class="p-stats"><div><b>${mins.filter(m => m > 0).length}/7</b><small>${t('daysActive')}</small></div>
         <div><b>${mins.reduce((a, b) => a + b, 0)}</b><small>${t('minutes')}</small></div><div><b>${week.length}</b><small>${t('sessions')}</small></div></div>
       <div class="p-chart">${chart}</div>
+      ${eduSection()}
       <h3 class="sec">${t('skillsTitle')}</h3>${skills}
       <h3 class="sec">${t('breakTitle')}</h3>
       <div class="setting"><div class="info"><small>${t('breakDesc')}</small></div><div class="seg">${opts}</div></div>
@@ -1085,6 +1207,7 @@
 
   window.TZ = {
     $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini, difficulty,
+    show, today, esc, me, playerName, BACK, PLAY, actions: {}, hubCards: [],
     registerGame: g => GAMES.push(g),
     addStrings: (he, en) => { Object.assign(STR.he, he); Object.assign(STR.en, en); },
   };
@@ -1095,6 +1218,7 @@
     if (current === 'game') show(G.endless ? 'title' : 'map');
     else if (current === 'mini' && miniBack) miniBack();
     else if (current === 'parents') show('settings');
+    else if (current === 'report') show(window.TZ.reportBack || 'title');
     else if (current !== 'title') show('title');
   }
 
@@ -1143,6 +1267,11 @@
     if (d.act === 'endless') return startEndless();
     if (d.act === 'parents') { if (await parentGate()) show('parents'); return; }
     if (d.break) { save.breakMin = Number(d.break); persist(); return renderParents(); }
+    if (d.switch) return switchPlayer(d.switch);
+    if (d.del) return deletePlayer(d.del);
+    if (d.act === 'add-player') return addPlayer();
+    if (d.act === 'export') return exportCsv();
+    if (d.act && window.TZ.actions[d.act]) return window.TZ.actions[d.act](el);
     if (d.act === 'reset') {
       const r = await modal(`<h2>${t('resetQ')}</h2>`, [{ id: 'yes', label: t('yes'), cls: 'primary' }, { id: 'no', label: t('no') }]);
       if (r === 'yes') {
