@@ -1,0 +1,18 @@
+{
+  "name": "tzavvanit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "צבעונית – מסע הצבעים: משחק זיכרון וקצב לגילאי 8+",
+  "scripts": {
+    "serve": "node serve.js 5173",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/app": "latest",
+    "@capacitor/cli": "latest",
+    "@capacitor/core": "latest"
+  }
+}

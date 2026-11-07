@@ -1,0 +1,14 @@
+{
+  "name": "צבעונית – מסע הצבעים",
+  "short_name": "צבעונית",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#fff6e8",
+  "theme_color": "#2ec4b6",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "appId": "com.scitedragames.tzavvanit",
+  "appName": "צבעונית",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#fff6e8"
+  }
+}

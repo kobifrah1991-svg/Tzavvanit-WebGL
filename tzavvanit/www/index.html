@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#2ec4b6">
+<title>צבעונית</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <section id="screen-title" class="screen active"></section>
+  <section id="screen-map" class="screen"></section>
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back aria-label="back">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="hud-title" id="hud-title"></div>
+      <div class="hearts" id="hearts"></div>
+      <div class="score" id="hud-score">0</div>
+    </header>
+    <div class="stage" id="stage">
+      <div class="scene" id="scene"></div>
+      <div class="banner" id="banner"><span class="chip" id="chip"></span><span id="banner-text"></span></div>
+      <div class="round-dots" id="round-dots"></div>
+      <div class="char-wrap" id="game-char"></div>
+      <div class="fx" id="fx"></div>
+    </div>
+    <div class="pads" id="pads" dir="ltr"></div>
+  </section>
+  <section id="screen-wardrobe" class="screen"></section>
+  <section id="screen-settings" class="screen"></section>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
