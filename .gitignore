@@ -1,2 +1,4 @@
 node_modules/
-tzavvanit/android/
+*.keystore
+*.jks
+keystore.properties
