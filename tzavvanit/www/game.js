@@ -6,10 +6,25 @@
 
   // ---------- Save ----------
   const SAVE_KEY = 'tzavvanit_save_v1';
-  const defaults = () => ({ stars: {}, best: 0, hat: 'none', lang: 'he', sound: true, vibe: true, assist: false, shapes: false, seenIntro: {} });
-  let save = defaults();
-  try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
+  const defaults = () => ({
+    stars: {}, best: 0, hat: 'none', skin: 'peach', lang: 'he', sound: true, vibe: true, assist: false, shapes: false, seenIntro: {},
+    coins: 0, xp: 0, owned: { hats: ['none'], skins: ['peach'] }, bests: {}, played: 0,
+    daily: null, streak: { last: '', count: 0 }, migrated: true,
+  });
+  const save = defaults();
+  let loaded = {};
+  try { loaded = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); } catch (e) { /* storage unavailable */ }
+  Object.assign(save, loaded);
   const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
+  // Saves from before the shop existed: stars become drops, and hats unlocked by stars stay owned
+  if (!loaded.migrated && Object.keys(loaded).length) {
+    const stars = Object.values(save.stars).reduce((a, b) => a + b, 0);
+    save.coins = stars * 10;
+    save.owned = { hats: ['none'].concat([[3, 'bow'], [8, 'cap'], [14, 'flower'], [22, 'headphones'], [32, 'party'], [45, 'crown']].filter(([n]) => stars >= n).map(([, id]) => id)), skins: ['peach'] };
+    if (!save.owned.hats.includes(save.hat)) save.hat = 'none';
+    save.migrated = true;
+    persist();
+  }
 
   // ---------- Text ----------
   const STR = {
@@ -76,6 +91,36 @@
       about: 'Tzavvanit · Scitedra Games · No ads, no data collection',
     },
   };
+  Object.assign(STR.he, {
+    lvl: 'רמה', drops: 'טיפות', games: 'משחקים', shop: 'חנות', missions: 'משימות היום', claim: 'קבלו', claimed: 'נאסף',
+    allMissions: 'כל המשימות הושלמו! בונוס', streakDays: n => `${n} ימים ברצף`,
+    dailyTitle: 'פרס יומי!', dailyText: n => `חזרתם ${n} ${n === 1 ? 'יום' : 'ימים'} ברצף. מחר הפרס גדל!`,
+    unlockAt: n => `נפתח ברמה ${n}`, levelUp: n => `עליתם לרמה ${n}!`, newGame: 'משחק חדש נפתח!',
+    earned: 'הרווחתם', again: 'שוב', time: 'זמן',
+    tabHats: 'כובעים', tabSkins: 'צבעים', buy: 'לקנות', equip: 'ללבוש', equipped: 'בשימוש',
+    noMoney: n => `חסרות ${n} טיפות`, bought: 'נקנה!',
+    skins: { peach: 'אפרסק', mint: 'מנטה', sky: 'שמיים', lemon: 'לימון', lilac: 'לילך', night: 'לילה' },
+    m_play: n => `שחקו ${n} משחקים`, m_coins: n => `אספו ${n} טיפות`, m_score: n => `השיגו ${n} נקודות במשחק אחד`,
+    m_simon: n => `השלימו ${n} שלבים במסע הצלילים`, m_game: name => `שחקו ב${name}`,
+    g_simon: 'מסע הצלילים', g_simon_d: 'זיכרון וקצב',
+    brainMap: 'מפת המוח שלי', brainHint: 'כל משחק מאמן מיומנות אחרת. שחקו בכולם כדי לחזק את כל המוח!',
+    sk_memory: 'זיכרון עבודה', sk_inhibit: 'ריכוז ושליטה עצמית', sk_attention: 'קשב מתמשך', sk_reason: 'חשיבה ולמידה', sk_visual: 'זיכרון חזותי',
+  });
+  Object.assign(STR.en, {
+    lvl: 'Level', drops: 'drops', games: 'Games', shop: 'Shop', missions: 'Today\'s missions', claim: 'Claim', claimed: 'Done',
+    allMissions: 'All missions done! Bonus', streakDays: n => `${n} day streak`,
+    dailyTitle: 'Daily reward!', dailyText: n => `You came back ${n} ${n === 1 ? 'day' : 'days'} in a row. Tomorrow's reward is bigger!`,
+    unlockAt: n => `Unlocks at level ${n}`, levelUp: n => `You reached level ${n}!`, newGame: 'New game unlocked!',
+    earned: 'You earned', again: 'Again', time: 'Time',
+    tabHats: 'Hats', tabSkins: 'Colors', buy: 'Buy', equip: 'Wear', equipped: 'Wearing',
+    noMoney: n => `${n} more drops needed`, bought: 'Bought!',
+    skins: { peach: 'Peach', mint: 'Mint', sky: 'Sky', lemon: 'Lemon', lilac: 'Lilac', night: 'Night' },
+    m_play: n => `Play ${n} games`, m_coins: n => `Collect ${n} drops`, m_score: n => `Score ${n} points in one game`,
+    m_simon: n => `Finish ${n} levels in the Sound Journey`, m_game: name => `Play ${name}`,
+    g_simon: 'Sound Journey', g_simon_d: 'Memory and rhythm',
+    brainMap: 'My brain map', brainHint: 'Each game trains a different skill. Play them all to train your whole brain!',
+    sk_memory: 'Working memory', sk_inhibit: 'Focus and self-control', sk_attention: 'Sustained attention', sk_reason: 'Thinking and learning', sk_visual: 'Visual memory',
+  });
   const t = (k, ...a) => { const v = STR[save.lang][k]; return typeof v === 'function' ? v(...a) : v; };
 
   // ---------- Data ----------
@@ -88,8 +133,17 @@
   ];
   const LEVELS = 6;
   const HATS = [
-    { id: 'none', need: 0 }, { id: 'bow', need: 3 }, { id: 'cap', need: 8 }, { id: 'flower', need: 14 },
-    { id: 'headphones', need: 22 }, { id: 'party', need: 32 }, { id: 'crown', need: 45 },
+    { id: 'none', price: 0 }, { id: 'bow', price: 40 }, { id: 'cap', price: 80 }, { id: 'flower', price: 120 },
+    { id: 'headphones', price: 200 }, { id: 'party', price: 300 }, { id: 'crown', price: 500 },
+  ];
+  // Body gradient: light, mid, dark
+  const SKINS = [
+    { id: 'peach', price: 0, c: ['#ffdccf', '#ffab94', '#ff8366'] },
+    { id: 'mint', price: 100, c: ['#d8fff1', '#7fe6c6', '#2ec4b6'] },
+    { id: 'sky', price: 150, c: ['#e0efff', '#8cc0ff', '#3a86ff'] },
+    { id: 'lemon', price: 150, c: ['#fff6c8', '#ffd86b', '#ffb627'] },
+    { id: 'lilac', price: 250, c: ['#f1e6ff', '#c9a8ff', '#9b6dff'] },
+    { id: 'night', price: 400, c: ['#6b7fb0', '#3b4c7e', '#1d2a4f'] },
   ];
   const PAD_FREQ = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
   const MAX_TRIES = 3;
@@ -113,6 +167,90 @@
   const GEAR = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`;
   const SHIRT = `<svg viewBox="0 0 24 24"><path d="M8 3l-5 3 2 5 2-1v11h10V10l2 1 2-5-5-3a4 4 0 0 1-8 0z" fill="currentColor"/></svg>`;
   const BACK = `<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const DROP = `<svg viewBox="0 0 24 24" class="drop"><path d="M12 2C9 7 5 10.5 5 15a7 7 0 0 0 14 0c0-4.5-4-8-7-13z"/><path d="M9 15.5a3 3 0 0 0 2.5 3" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".8"/></svg>`;
+  const FLAME = `<svg viewBox="0 0 24 24" class="flame"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z"/></svg>`;
+  const BAG = `<svg viewBox="0 0 24 24"><path d="M6 8h12l-1 13H7z" fill="currentColor"/><path d="M9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>`;
+  const CHECK = `<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  // ---------- Progress: drops, XP, levels, missions ----------
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const xpToNext = lvl => 80 + lvl * 40;
+  function levelInfo() {
+    let lvl = 1, rest = save.xp;
+    while (rest >= xpToNext(lvl)) { rest -= xpToNext(lvl); lvl++; }
+    return { lvl, into: rest, need: xpToNext(lvl) };
+  }
+  const playerLevel = () => levelInfo().lvl;
+
+  // Registered games (the Sound Journey here, the rest from minigames.js)
+  const GAMES = [];
+  const gameName = g => g.name ? g.name[save.lang] : t('g_' + g.id);
+
+  const MISSION_POOL = [
+    { kind: 'play', goal: 3, reward: 30 },
+    { kind: 'coins', goal: 60, reward: 30 },
+    { kind: 'score', goal: 300, reward: 35 },
+    { kind: 'simon', goal: 2, reward: 35 },
+    { kind: 'game', goal: 1, reward: 25 },
+    { kind: 'game', goal: 1, reward: 25 },
+  ];
+  function ensureDaily() {
+    if (save.daily && save.daily.date === today()) return;
+    const open = GAMES.filter(g => g.minLevel <= playerLevel());
+    const pool = MISSION_POOL.slice();
+    const picked = [];
+    while (picked.length < 3 && pool.length) {
+      const m = Object.assign({}, pool.splice(rand(pool.length), 1)[0], { progress: 0, claimed: false });
+      if (m.kind === 'game') {
+        const choices = open.filter(g => !picked.some(p => p.game === g.id));
+        if (!choices.length) continue;
+        m.game = choices[rand(choices.length)].id;
+      }
+      if (picked.some(p => p.kind === m.kind && m.kind !== 'game')) continue;
+      picked.push(m);
+    }
+    save.daily = { date: today(), missions: picked, bonus: false };
+    persist();
+  }
+  const missionText = m => m.kind === 'game' ? t('m_game', gameName(GAMES.find(g => g.id === m.game) || { id: 'simon' })) : t('m_' + m.kind, m.goal);
+
+  // Records an event; returns missions that just got completed
+  function track(kind, value = 1, game = null) {
+    ensureDaily();
+    const done = [];
+    for (const m of save.daily.missions) {
+      if (m.progress >= m.goal) continue;
+      if (m.kind === kind && kind === 'score') m.progress = value >= m.goal ? m.goal : m.progress;
+      else if (m.kind === kind && kind === 'game') { if (m.game === game) m.progress = 1; }
+      else if (m.kind === kind) m.progress = Math.min(m.goal, m.progress + value);
+      if (m.progress >= m.goal) done.push(m);
+    }
+    persist();
+    return done;
+  }
+
+  // Pays out a finished game; returns what happened for the results screen
+  function grant(game, score, coins, xp) {
+    const before = playerLevel();
+    const unlockedBefore = GAMES.filter(g => g.minLevel <= before).length;
+    save.coins += coins;
+    save.xp += xp;
+    save.played++;
+    const isBest = score > (save.bests[game] || 0);
+    if (isBest) save.bests[game] = score;
+    const done = [...track('play'), ...track('coins', coins), ...track('score', score), ...track('game', 1, game)];
+    const after = playerLevel();
+    persist();
+    return { coins, xp, isBest, levelUp: after > before ? after : 0, newGame: GAMES.filter(g => g.minLevel <= after).length > unlockedBefore, missions: done };
+  }
+  const rewardHtml = r => `<div class="reward-row"><span class="pill">${DROP}+${r.coins}</span><span class="pill pill-xp">+${r.xp} XP</span></div>
+    ${r.levelUp ? `<div class="badge">${t('levelUp', r.levelUp)}</div>` : ''}
+    ${r.newGame ? `<div class="badge">${t('newGame')}</div>` : ''}
+    ${r.missions.map(m => `<div class="badge mission-badge">${CHECK}${missionText(m)}</div>`).join('')}`;
+
+  function updateCoinsDisplay() {
+    document.querySelectorAll('[data-coins]').forEach(el => { el.textContent = save.coins; });
+  }
   const SHAPES = [
     '<circle cx="12" cy="12" r="9"/>',
     '<path d="M12 3l10 18H2z"/>',
@@ -122,10 +260,11 @@
 
   // ---------- Character ----------
   let uid = 0;
-  const charSVG = () => {
+  const charSVG = (skin = save.skin) => {
     const id = `cb${++uid}`;
+    const c = (SKINS.find(s => s.id === skin) || SKINS[0]).c;
     return `<svg class="char" viewBox="0 0 200 200" aria-hidden="true">
-      <defs><radialGradient id="${id}" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#ffdccf"/><stop offset=".6" stop-color="#ffab94"/><stop offset="1" stop-color="#ff8366"/></radialGradient></defs>
+      <defs><radialGradient id="${id}" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="${c[0]}"/><stop offset=".6" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></radialGradient></defs>
       <ellipse class="c-shadow" cx="100" cy="188" rx="60" ry="9"/>
       <g class="c-body">
         <ellipse cx="100" cy="128" rx="74" ry="60" fill="url(#${id})"/>
@@ -146,7 +285,7 @@
         <g class="hat hat-crown"><path d="M66 82V48l17 15 17-23 17 23 17-15v34z" fill="#ffb627" stroke="#d9921a" stroke-width="3" stroke-linejoin="round"/><circle cx="100" cy="66" r="5" fill="#ff6f59"/><circle cx="80" cy="72" r="4" fill="#3a86ff"/><circle cx="120" cy="72" r="4" fill="#2ec4b6"/></g>
       </g></svg>`;
   };
-  const charWrap = (cls = '', hat = save.hat) => `<div class="char-wrap ${cls}" data-hat="${hat}">${charSVG()}</div>`;
+  const charWrap = (cls = '', hat = save.hat, skin = save.skin) => `<div class="char-wrap ${cls}" data-hat="${hat}">${charSVG(skin)}</div>`;
 
   // ---------- Scenes ----------
   const SCENES = {
@@ -210,34 +349,91 @@
 
   // ---------- Screens ----------
   let current = 'title';
+  let miniCleanup = null;
   const show = name => {
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === `screen-${name}`));
     if (current === 'game' && name !== 'game') G.token++;
+    if (current === 'mini' && miniCleanup) { miniCleanup(); miniCleanup = null; }
     current = name;
     if (name === 'title') renderTitle();
     if (name === 'map') renderMap();
-    if (name === 'wardrobe') renderWardrobe();
+    if (name === 'shop') renderShop();
     if (name === 'settings') renderSettings();
   };
   const topbar = (title, extra = '') => `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button><h2>${title}</h2>${extra}</header>`;
   const starCount = () => `<div class="star-count">${STAR(true)}<span>${totalStars()}</span></div>`;
 
+  const coinPill = () => `<div class="coin-pill">${DROP}<span data-coins>${save.coins}</span></div>`;
+
+  // Home: who you are, what to do today, what to play
   function renderTitle() {
+    ensureDaily();
     const colors = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)'];
     const logo = [...t('logo')].map((ch, i) => `<span style="color:${colors[i % 4]};animation-delay:${i * 0.12}s">${ch}</span>`).join('');
-    $('#screen-title').innerHTML = `<div class="title-wrap">
-      <div><div class="logo">${logo}</div><div class="sub">${t('subtitle')}</div></div>
-      ${charWrap('big')}
-      <div class="menu">
-        <button class="btn primary" data-go="map">${PLAY}${t('play')}</button>
-        <button class="btn" data-act="endless">${INF}${t('endless')}</button>
-        <div class="row">
-          <button class="btn small" data-go="wardrobe">${SHIRT}${t('wardrobe')}</button>
-          <button class="btn small" data-go="settings">${GEAR}${t('settings')}</button>
+    const L = levelInfo();
+    const d = save.daily;
+    const missions = d.missions.map((m, i) => {
+      const full = m.progress >= m.goal;
+      return `<div class="mission${m.claimed ? ' claimed' : ''}">
+        <div class="info"><b>${missionText(m)}</b><div class="bar"><i style="width:${Math.round(100 * m.progress / m.goal)}%"></i></div></div>
+        ${m.claimed ? `<span class="done">${CHECK}</span>`
+          : `<button class="btn small${full ? ' primary' : ''}" data-claim="${i}" ${full ? '' : `data-locked="${missionText(m)}" aria-disabled="true"`}>${DROP}${m.reward}</button>`}
+      </div>`;
+    }).join('');
+    const games = GAMES.map(g => {
+      const open = g.minLevel <= L.lvl;
+      return `<button class="game-card${open ? '' : ' locked'}" style="--gc:${g.color}" data-game="${g.id}" ${open ? '' : `data-locked="${t('unlockAt', g.minLevel)}" aria-disabled="true"`}>
+        <span class="game-icon">${g.icon}</span>
+        <b>${gameName(g)}</b>
+        <small>${open ? (g.desc ? g.desc[save.lang] : t('g_' + g.id + '_d')) : t('unlockAt', g.minLevel)}</small>
+        ${open && save.bests[g.id] ? `<span class="best">${STAR(true)}${save.bests[g.id]}</span>` : ''}
+        ${open ? '' : `<span class="lock-badge">${LOCK}</span>`}
+      </button>`;
+    }).join('');
+    $('#screen-title').innerHTML = `
+      <header class="hub-top">
+        <div class="lvl-badge" aria-label="${t('lvl')} ${L.lvl}"><small>${t('lvl')}</small><b>${L.lvl}</b></div>
+        <div class="xp"><div class="bar"><i style="width:${Math.round(100 * L.into / L.need)}%"></i></div><small>${L.into}/${L.need} XP</small></div>
+        ${coinPill()}
+        <button class="icon-btn" data-go="settings" aria-label="${t('settings')}">${GEAR}</button>
+      </header>
+      <div class="scroll hub">
+        <div class="hub-hero">
+          <div><div class="logo small">${logo}</div>
+            ${save.streak.count > 1 ? `<div class="streak">${FLAME}${t('streakDays', save.streak.count)}</div>` : `<div class="sub">${t('subtitle')}</div>`}
+            <button class="btn small" data-go="shop">${BAG}${t('shop')}</button></div>
+          <button class="hero-char" data-go="shop" aria-label="${t('shop')}">${charWrap('')}</button>
         </div>
-      </div>
-      <div class="title-stars">${starCount()}</div>
-    </div>`;
+        <h3 class="sec">${t('missions')}</h3>
+        <div class="missions">${missions}</div>
+        <h3 class="sec">${t('games')}</h3>
+        <div class="game-grid">${games}</div>
+        <h3 class="sec">${t('brainMap')}</h3>
+        <div class="brain-map">${GAMES.map(g => {
+          // Skill strength: the game's best score against a "mastered" target
+          const pct = Math.min(100, Math.round(100 * (save.bests[g.id] || 0) / g.target));
+          return `<div class="skill"><span class="skill-dot" style="background:${g.color}"></span><b>${t('sk_' + g.skill)}</b>
+            <div class="bar"><i style="width:${pct}%;background:${g.color}"></i></div><small>${pct}%</small></div>`;
+        }).join('')}<p class="hint">${t('brainHint')}</p></div>
+      </div>`;
+  }
+
+  // Daily return reward, grows with the streak
+  async function dailyCheck() {
+    const now = today();
+    if (save.streak.last === now) return;
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yesterday = `${y.getFullYear()}-${y.getMonth() + 1}-${y.getDate()}`;
+    save.streak.count = save.streak.last === yesterday ? save.streak.count + 1 : 1;
+    save.streak.last = now;
+    const gift = 10 + 5 * Math.min(save.streak.count, 7);
+    save.coins += gift;
+    persist();
+    Sound.success();
+    await modal(`${charWrap('happy')}<h2>${t('dailyTitle')}</h2><div class="reward-row"><span class="pill big">${DROP}+${gift}</span></div>
+      <div class="streak">${FLAME}${t('streakDays', save.streak.count)}</div><p>${t('dailyText', save.streak.count)}</p>`,
+      [{ id: 'ok', label: t('go'), cls: 'primary' }]);
+    if (current === 'title') renderTitle();
   }
 
   function renderMap() {
@@ -266,15 +462,73 @@
     if (cur) requestAnimationFrame(() => cur.closest('.world').scrollIntoView({ block: 'center' }));
   }
 
-  function renderWardrobe() {
-    const total = totalStars();
-    const items = HATS.map(h => {
-      const locked = total < h.need;
-      return `<button class="hat-btn${save.hat === h.id ? ' selected' : ''}${locked ? ' locked' : ''}" data-hat-pick="${h.id}" ${locked ? `data-locked="${t('lockedHat', h.need - total)}" aria-disabled="true"` : ''}>
-        ${charWrap('', h.id)}<span>${t('hats')[h.id]}</span>${locked ? `<span class="need">${STAR(true)}${h.need}</span>` : ''}</button>`;
+  let shopTab = 'hats';
+  function renderShop() {
+    const isHats = shopTab === 'hats';
+    const list = isHats ? HATS : SKINS;
+    const items = list.map(it => {
+      const owned = save.owned[shopTab].includes(it.id);
+      const worn = isHats ? save.hat === it.id : save.skin === it.id;
+      const label = isHats ? t('hats')[it.id] : t('skins')[it.id];
+      const state = worn ? `<span class="tag on">${t('equipped')}</span>` : owned ? `<span class="tag">${t('equip')}</span>`
+        : `<span class="price${save.coins < it.price ? ' short' : ''}">${DROP}${it.price}</span>`;
+      return `<button class="hat-btn${worn ? ' selected' : ''}" data-buy="${shopTab}:${it.id}">
+        ${isHats ? charWrap('', it.id) : charWrap('', save.hat, it.id)}<span>${label}</span>${state}</button>`;
     }).join('');
-    $('#screen-wardrobe').innerHTML = topbar(t('wardrobe'), starCount()) +
-      `<div class="scroll"><div class="wardrobe-preview">${charWrap('happy')}</div><div class="hat-grid">${items}</div></div>`;
+    $('#screen-shop').innerHTML = topbar(t('shop'), coinPill()) + `<div class="scroll">
+      <div class="wardrobe-preview">${charWrap('happy')}</div>
+      <div class="seg tabs"><button data-tab="hats" aria-pressed="${isHats}">${t('tabHats')}</button><button data-tab="skins" aria-pressed="${!isHats}">${t('tabSkins')}</button></div>
+      <div class="hat-grid">${items}</div></div>`;
+  }
+
+  function buyOrWear(kind, id) {
+    const it = (kind === 'hats' ? HATS : SKINS).find(x => x.id === id);
+    if (!save.owned[kind].includes(id)) {
+      if (save.coins < it.price) { vibrate(30); return toast(t('noMoney', it.price - save.coins)); }
+      save.coins -= it.price;
+      save.owned[kind].push(id);
+      Sound.win();
+      toast(t('bought'));
+    }
+    if (kind === 'hats') save.hat = id; else save.skin = id;
+    persist();
+    renderShop();
+  }
+
+  async function claimMission(i) {
+    const d = save.daily, m = d.missions[i];
+    if (!m || m.claimed || m.progress < m.goal) return;
+    m.claimed = true;
+    save.coins += m.reward;
+    Sound.success();
+    if (!d.bonus && d.missions.every(x => x.claimed)) {
+      d.bonus = true;
+      save.coins += 50;
+      persist();
+      renderTitle();
+      confettiAt(document.body, 50);
+      await modal(`${charWrap('happy')}<h2>${t('allMissions')}</h2><div class="reward-row"><span class="pill big">${DROP}+50</span></div>`, [{ id: 'ok', label: t('go'), cls: 'primary' }]);
+      return;
+    }
+    persist();
+    renderTitle();
+  }
+
+  function confettiAt(host, n = 30) {
+    const colors = ['#ff6f59', '#ffb627', '#2ec4b6', '#3a86ff', '#ff8a3d', '#ffffff'];
+    const box = document.createElement('div');
+    box.className = 'fx';
+    $('#app').appendChild(box);
+    for (let k = 0; k < n; k++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.background = colors[k % colors.length];
+      c.style.animationDuration = `${1.2 + Math.random() * 1.2}s`;
+      c.style.animationDelay = `${Math.random() * 0.3}s`;
+      box.appendChild(c);
+    }
+    setTimeout(() => box.remove(), 2800);
   }
 
   function renderSettings() {
@@ -573,12 +827,11 @@
   async function levelComplete() {
     const tk = G.token;
     const stars = Math.max(1, 3 - G.mistakes);
-    const before = totalStars();
     const k = key(G.w, G.l);
     save.stars[k] = Math.max(starsOf(G.w, G.l), stars);
-    persist();
-    const after = totalStars();
-    const newHat = HATS.find(h => h.need > before && h.need <= after);
+    const simonDone = track('simon');
+    const reward = grant('simon', G.score, 5 + stars * 8 + (G.cfg.boss ? 20 : 0), 20 + stars * 5);
+    reward.missions.unshift(...simonDone);
     const worldDone = G.cfg.boss;
     Sound.win();
     confetti(60);
@@ -587,7 +840,7 @@
     const hasNext = G.l < LEVELS - 1 || G.w < WORLDS.length - 1;
     const r = await modal(`<h2>${worldDone ? t('worldDone') : t('levelDone')}</h2>
       <div class="stars-big">${[1, 2, 3].map(n => STAR(n <= stars).replace('class="star on"', `class="star on" style="animation-delay:${n * 0.25}s"`)).join('')}</div>
-      <p>${t('score')}: <b>${G.score}</b></p>${newHat ? `<div class="badge">${t('newHat')}</div>` : ''}`,
+      <p>${t('score')}: <b>${G.score}</b></p>${rewardHtml(reward)}`,
       [hasNext ? { id: 'next', label: t('next'), cls: 'primary' } : null, { id: 'retry', label: t('retry') }, { id: 'map', label: t('map') }].filter(Boolean));
     if (r === 'next') {
       const [w, l] = G.l < LEVELS - 1 ? [G.w, G.l + 1] : [G.w + 1, 0];
@@ -606,16 +859,62 @@
     const len = G.seq.length - 1;
     const isBest = G.score > save.best;
     if (isBest) { save.best = G.score; persist(); confetti(50); Sound.win(); }
+    const reward = grant('simon', G.score, 3 + Math.floor(G.score / 40), 10 + Math.floor(G.score / 20));
     const r = await modal(`<h2>${t('endlessOver')}</h2><div class="big-num">${G.score}</div><p>${t('endlessLen', Math.max(0, len))}</p>
-      ${isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.best}</p>`}`,
+      ${isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.best}</p>`}${rewardHtml(reward)}`,
       [{ id: 'retry', label: t('retry'), cls: 'primary' }, { id: 'home', label: t('home') }]);
     if (r === 'retry') startEndless(); else show('title');
   }
+
+  // ---------- Mini-games frame (games themselves live in minigames.js) ----------
+  let miniBack = null;
+  const Mini = {
+    open(game) {
+      $('#screen-mini').innerHTML = `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button>
+        <div class="hud-title">${gameName(game)}</div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
+        <div class="timebar" id="mini-time"><i></i></div><div class="mini-area" id="mini-area"></div>`;
+      show('mini');
+      miniBack = () => show('title');
+      return $('#mini-area');
+    },
+    score(n) { $('#mini-score').textContent = n; },
+    extra(html) { $('#mini-extra').innerHTML = html; },
+    time(frac) {
+      const bar = $('#mini-time');
+      bar.classList.toggle('hidden', frac == null);
+      if (frac != null) bar.firstElementChild.style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
+    },
+    // The game's stop function; runs when the player leaves the screen
+    onLeave(fn) { miniCleanup = fn; },
+    async finish(game, score, coins, xp, lines = '') {
+      if (miniCleanup) { miniCleanup(); miniCleanup = null; }
+      const reward = grant(game.id, score, coins, xp);
+      Sound.win();
+      if (reward.isBest) confettiAt(document.body, 50);
+      const praise = t('praise');
+      const r = await modal(`<h2>${praise[rand(praise.length)]}</h2><div class="big-num">${score}</div>${lines}
+        ${reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id]}</p>`}${rewardHtml(reward)}`,
+        [{ id: 'again', label: t('again'), cls: 'primary' }, { id: 'home', label: t('home') }]);
+      if (r === 'again') game.start(); else show('title');
+    },
+  };
+
+  GAMES.push({
+    id: 'simon', minLevel: 1, color: '#2ec4b6', skill: 'memory', target: 1500, start: () => show('map'),
+    icon: `<svg viewBox="0 0 48 48"><rect x="4" y="4" width="18" height="18" rx="6" fill="#ff6f59"/><rect x="26" y="4" width="18" height="18" rx="6" fill="#ffb627"/><rect x="4" y="26" width="18" height="18" rx="6" fill="#2ec4b6"/><rect x="26" y="26" width="18" height="18" rx="6" fill="#3a86ff"/></svg>`,
+  });
+
+  window.TZ = {
+    $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini,
+    registerGame: g => GAMES.push(g),
+    addStrings: (he, en) => { Object.assign(STR.he, he); Object.assign(STR.en, en); },
+  };
 
   // ---------- Navigation ----------
   function back() {
     if (modalResolve) { closeModal(current === 'game' ? 'map' : null); return; }
     if (current === 'game') show(G.endless ? 'title' : 'map');
+    else if (current === 'mini' && miniBack) miniBack();
     else if (current !== 'title') show('title');
   }
 
@@ -626,7 +925,8 @@
   document.addEventListener('pointerdown', e => {
     Sound.init();
     const el = e.target.closest('button');
-    press = el && !el.classList.contains('pad') ? { el, x: e.clientX, y: e.clientY } : null;
+    // Pads and in-game buttons (data-raw) handle their own pointerdown
+    press = el && !el.classList.contains('pad') && !el.hasAttribute('data-raw') ? { el, x: e.clientX, y: e.clientY } : null;
   });
   document.addEventListener('pointerup', e => {
     const p = press;
@@ -637,7 +937,7 @@
   // Keyboard activation (Enter/Space) arrives as a click with detail 0
   document.addEventListener('click', e => {
     const el = e.target.closest('button');
-    if (el && e.detail === 0 && !el.classList.contains('pad')) handleButton(el);
+    if (el && e.detail === 0 && !el.classList.contains('pad') && !el.hasAttribute('data-raw')) handleButton(el);
   });
 
   async function handleButton(el) {
@@ -649,7 +949,10 @@
     if (el.hasAttribute('data-back')) return back();
     if (d.go) return show(d.go);
     if (d.lvl) { const [w, l] = d.lvl.split(',').map(Number); return startLevel(w, l); }
-    if (d.hatPick) { save.hat = d.hatPick; persist(); return renderWardrobe(); }
+    if (d.buy) { const [kind, id] = d.buy.split(':'); return buyOrWear(kind, id); }
+    if (d.tab) { shopTab = d.tab; return renderShop(); }
+    if (d.claim) return claimMission(Number(d.claim));
+    if (d.game) { const g = GAMES.find(x => x.id === d.game); if (g) return g.start(); }
     if (d.toggle) {
       save[d.toggle] = !save[d.toggle]; persist();
       document.body.classList.toggle('shapes', save.shapes);
@@ -661,7 +964,8 @@
       const r = await modal(`<h2>${t('resetQ')}</h2>`, [{ id: 'yes', label: t('yes'), cls: 'primary' }, { id: 'no', label: t('no') }]);
       if (r === 'yes') {
         const keep = { lang: save.lang, sound: save.sound, vibe: save.vibe, assist: save.assist, shapes: save.shapes };
-        save = Object.assign(defaults(), keep); persist(); renderSettings();
+        Object.keys(save).forEach(k => delete save[k]);
+        Object.assign(save, defaults(), keep); persist(); renderSettings();
       }
     }
   }
@@ -694,8 +998,12 @@
   }
 
   // ---------- Boot ----------
-  applyLang();
-  document.body.classList.toggle('shapes', save.shapes);
-  buildPads();
-  renderTitle();
+  // Waits for minigames.js to register its games before the home screen draws
+  document.addEventListener('DOMContentLoaded', () => {
+    applyLang();
+    document.body.classList.toggle('shapes', save.shapes);
+    buildPads();
+    renderTitle();
+    dailyCheck();
+  });
 })();
