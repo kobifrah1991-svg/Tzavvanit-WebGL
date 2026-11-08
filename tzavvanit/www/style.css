@@ -635,3 +635,7 @@ body.shapes .choice .shape { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Research mode and version warning */
+.rep-warn { margin: 8px 0 0; padding: 8px 12px; border-radius: 12px; background: #fff3d6; color: var(--ink); font-size: .9rem; }
+.edu-actions small.muted { align-self: center; }

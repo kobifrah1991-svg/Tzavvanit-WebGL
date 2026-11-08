@@ -27,6 +27,11 @@
     m_rt: 'זמן תגובה חציוני', m_rtsd: 'יציבות (סטיית תקן)', m_omit: 'החמצות', m_comm: 'תגובות פזיזות', m_span: 'טווח זיכרון',
     m_interf: 'אפקט הפרעה', m_stacc: 'דיוק', m_async: 'סטייה מהקצב', m_cv: 'אחידות בקצב עצמאי',
     u_ms: 'מ"ש', u_pct: '%', u_items: 'פריטים',
+    rep_ver: 'המבדק הקודם נעשה בגרסה אחרת של המשימות, לכן ההשוואה פחות מדויקת.',
+    rs_title: 'מצב מחקר', rs_desc: 'למחקרי תיקוף בלבד. כל ילד מקבל קוד, וקובץ הייצוא כולל כל תגובה בנפרד, בלי שמות.',
+    rs_on: 'מצב מחקר פעיל', rs_code: 'קוד', rs_tests: 'מבדקים', rs_export: 'ייצוא נתוני מחקר (CSV)',
+    rs_note: 'טבלת הקודים מול השמות מופיעה רק כאן. שמרו אותה בנפרד מהקובץ ואל תשלחו אותה יחד איתו.',
+    rs_ver: v => `גרסת משימות: ${v}`,
   }, {
     g_assess: 'Progress assessment',
     as_card: 'Progress assessment', as_cardFirst: 'First assessment: 5 short tasks, about 6 minutes', as_cardDue: 'Time for a follow-up assessment',
@@ -48,7 +53,19 @@
     m_rt: 'Median reaction time', m_rtsd: 'Consistency (SD)', m_omit: 'Missed', m_comm: 'Impulsive taps', m_span: 'Memory span',
     m_interf: 'Interference effect', m_stacc: 'Accuracy', m_async: 'Offset from beat', m_cv: 'Steadiness on own',
     u_ms: 'ms', u_pct: '%', u_items: 'items',
+    rep_ver: 'The previous assessment used a different version of the tasks, so the comparison is less precise.',
+    rs_title: 'Research mode', rs_desc: 'For validation studies only. Each child gets a code, and the export holds every response, with no names.',
+    rs_on: 'Research mode on', rs_code: 'Code', rs_tests: 'Assessments', rs_export: 'Export research data (CSV)',
+    rs_note: 'The code-to-name table appears only here. Keep it apart from the file and never send them together.',
+    rs_ver: v => `Task version: ${v}`,
   });
+
+  // Any change to a task's timing, trial counts or scoring must bump this version:
+  // results from different versions are not comparable and would break age norms.
+  const ASSESS_VERSION = '1.0.0';
+  const RESEARCH_KEY = 'tzavvanit_research';
+  const research = (() => { try { return JSON.parse(localStorage.getItem(RESEARCH_KEY) || 'null') || { on: false }; } catch (e) { return { on: false }; } })();
+  const saveResearch = () => { try { localStorage.setItem(RESEARCH_KEY, JSON.stringify(research)); } catch (e) { /* ignore */ } };
 
   const ASSESS = { id: 'assess' };
   const COLORS = ['#ff4d4d', '#ffc21a', '#22b04b', '#2f6bff'];
@@ -85,20 +102,22 @@
   }
 
   // 1. Simple reaction time: 10 trials, random foreperiod, anticipations are repeated
-  async function taskRT(area, live) {
+  async function taskRT(area, live, rec) {
     area.innerHTML = `<div class="as-stage"><div class="as-msg" id="as-msg"></div><button class="as-target" id="as-t" data-raw></button></div>`;
     const el = $('#as-t'), msg = $('#as-msg');
     const rts = [];
     let antic = 0;
     for (let i = 0; i < 10 && live(); i++) {
       el.className = 'as-target wait'; msg.textContent = '';
-      const early = await tapOrTimeout(el, 1200 + rand(2000));
+      const fp = 1200 + rand(2000);
+      const early = await tapOrTimeout(el, fp);
       if (!live()) return {};
-      if (early) { antic++; msg.textContent = t('as_early'); vibrate(40); await sleep(900); i--; if (antic > 8) break; continue; }
+      if (early) { antic++; rec({ task: 'rt', cond: 'anticipation', target: fp, resp: 1, correct: 0 }); msg.textContent = t('as_early'); vibrate(40); await sleep(900); i--; if (antic > 8) break; continue; }
       el.className = 'as-target go';
       const t0 = performance.now();
       const hit = await tapOrTimeout(el, 2000);
       el.className = 'as-target';
+      rec({ task: 'rt', cond: 'go', target: fp, resp: hit ? 1 : 0, correct: hit ? 1 : 0, rt: hit ? hit - t0 : null });
       if (hit) { rts.push(hit - t0); Sound.tone(880, 0.06, 'sine', 0.2); }
       await sleep(350);
     }
@@ -106,7 +125,7 @@
   }
 
   // 2. Go/No-Go: 30 trials, 22 go / 8 no-go, 800 ms response window
-  async function taskGNG(area, live) {
+  async function taskGNG(area, live, rec) {
     area.innerHTML = `<div class="as-stage"><button class="as-gng" id="as-g" data-raw></button></div>`;
     const el = $('#as-g');
     const trials = shuffle([...Array(22).fill('go'), ...Array(8).fill('no')]);
@@ -118,6 +137,7 @@
       const t0 = performance.now();
       const hit = await tapOrTimeout(el, 800);
       el.className = 'as-gng';
+      rec({ task: 'gng', cond: kind, resp: hit ? 1 : 0, correct: (kind === 'go') === !!hit ? 1 : 0, rt: hit ? hit - t0 : null });
       if (kind === 'go') { if (hit) rts.push(hit - t0); else omit++; }
       else if (hit) { comm++; vibrate(40); }
       await sleep(hit ? 800 - (hit - t0) + 450 : 450);
@@ -126,7 +146,7 @@
   }
 
   // 3. Spatial span (Corsi-style) on a 3×3 grid: two tries per length, stop after both fail
-  async function taskSpan(area, live) {
+  async function taskSpan(area, live, rec) {
     area.innerHTML = `<div class="as-stage"><div class="as-grid" id="as-grid" dir="ltr">${Array.from({ length: 9 }, (_, i) => `<button class="as-cell" data-raw data-i="${i}"></button>`).join('')}</div></div>`;
     const cells = [...area.querySelectorAll('.as-cell')];
     let span = 0;
@@ -142,6 +162,7 @@
           await sleep(600); cells[c].classList.remove('lit'); await sleep(250);
         }
         let ok = true;
+        const taps = [], r0 = performance.now();
         for (let k = 0; k < len && ok; k++) {
           const tapped = await new Promise(res => {
             const on = e => { const b = e.target.closest('.as-cell'); if (!b) return; e.preventDefault(); off(); res(Number(b.dataset.i)); };
@@ -151,8 +172,10 @@
           });
           if (!live()) return {};
           if (tapped >= 0) { cells[tapped].classList.add('tap'); setTimeout(() => cells[tapped].classList.remove('tap'), 200); }
+          taps.push(tapped);
           if (tapped !== seq[k]) ok = false;
         }
+        rec({ task: 'span', cond: `len${len}`, target: seq.join('-'), resp: taps.join('-'), correct: ok ? 1 : 0, rt: performance.now() - r0 });
         if (ok) { passed = true; span = len; Sound.success(); } else { Sound.fail(); }
         await sleep(500);
       }
@@ -162,7 +185,7 @@
   }
 
   // 4. Stroop: 20 trials (10 congruent, 10 incongruent), name the ink color
-  async function taskStroop(area, live) {
+  async function taskStroop(area, live, rec) {
     const names = t('colorNames');
     area.innerHTML = `<div class="as-stage"><div class="word-card as-word-card"><div class="word" id="as-w"></div></div>
       <div class="choice-grid" dir="ltr">${COLORS.map((c, i) => `<button class="choice" data-raw data-i="${i}" style="--cc:${c}" aria-label="${names[i]}"></button>`).join('')}</div></div>`;
@@ -181,6 +204,7 @@
         const tm = setTimeout(() => { off(); res(null); }, 4000);
         grid.addEventListener('pointerdown', on);
       });
+      rec({ task: 'stroop', cond: isCong ? 'congruent' : 'incongruent', target: `word${word}-ink${ink}`, resp: pick ? pick.i : '', correct: pick && pick.i === ink ? 1 : 0, rt: pick ? pick.at - t0 : null });
       if (pick && pick.i === ink) { correct++; (isCong ? cong : inc).push(pick.at - t0); }
       w.textContent = '';
       await sleep(400);
@@ -189,7 +213,7 @@
   }
 
   // 5. Paced then unpaced tapping: 8 beats with a metronome at 600 ms, then 8 on their own
-  async function taskTiming(area, live) {
+  async function taskTiming(area, live, rec) {
     area.innerHTML = `<div class="as-stage"><div class="as-msg" id="as-msg"></div><button class="drum" id="as-drum" data-raw><span class="ring"></span><span class="skin"></span></button></div>`;
     const drum = $('#as-drum'), msg = $('#as-msg');
     Sound.init();
@@ -218,6 +242,8 @@
     if (bus) bus.disconnect();
     const end = beats[PACED - 1] + GAP / 2;
     const asyncs = beats.map(b => { const n = taps.filter(x => Math.abs(x - b) < 0.3).map(x => Math.abs(x - b) * 1000); return n.length ? Math.min(...n) : null; }).filter(v => v != null);
+    // Each tap, in ms from the first beat; `target` is the nearest paced beat's index
+    taps.forEach(x => rec({ task: 'timing', cond: x > end ? 'free' : 'paced', target: x > end ? '' : Math.round((x - t0) / GAP), rt: (x - t0) * 1000 }));
     const free = taps.filter(x => x > end);
     const itis = free.slice(1).map((x, i) => (x - free[i]) * 1000).filter(v => v > 250 && v < 1500);
     const m = itis.length ? itis.reduce((a, b) => a + b, 0) / itis.length : 0;
@@ -232,6 +258,27 @@
     { title: 'as_tm_t', desc: 'as_tm_d', run: taskTiming },
   ];
 
+  // Device facts that affect timing: touch and display latency differ between phones,
+  // so norms may need a correction per device class. Frame interval is measured live.
+  function deviceInfo() {
+    Sound.init();
+    return new Promise(res => {
+      const stamps = [];
+      const done = () => {
+        const gaps = stamps.slice(1).map((x, i) => x - stamps[i]);
+        const ctx = Sound.ctx;
+        res({
+          ua: navigator.userAgent.slice(0, 160), w: screen.width, h: screen.height, dpr: Math.round((window.devicePixelRatio || 1) * 100) / 100,
+          touch: navigator.maxTouchPoints || 0, frame: gaps.length ? Math.round(median(gaps) * 10) / 10 : null,
+          audio: ctx ? Math.round(1000 * (ctx.outputLatency || ctx.baseLatency || 0)) : null,
+        });
+      };
+      const tm = setTimeout(done, 1200);
+      const f = ts => { stamps.push(ts); if (stamps.length < 31) requestAnimationFrame(f); else { clearTimeout(tm); done(); } };
+      requestAnimationFrame(f);
+    });
+  }
+
   async function runAssessment() {
     const area = Mini.open(ASSESS);
     const chip = $('#screen-mini .diff-chip');
@@ -242,17 +289,29 @@
     const my = ++runToken;
     const live = () => alive && my === runToken;
     Mini.onLeave(() => { alive = false; });
-    const m = {};
+    const m = {}, trials = [];
+    const n = {};
+    const rec = o => {
+      n[o.task] = (n[o.task] || 0) + 1;
+      trials.push({ ...o, i: n[o.task], rt: o.rt == null ? null : Math.round(o.rt) });
+    };
+    const started = new Date();
+    // Games played earlier the same day can warm a child up; researchers may want to control for it
+    const warmup = (save.history || []).filter(h => h.d === TZ.today()).length;
+    const dev = await deviceInfo();
     for (let i = 0; i < TASKS.length; i++) {
       Mini.extra(`<span class="chip">${i + 1}/${TASKS.length}</span>`);
       const task = TASKS[i];
       await intro(area, i + 1, TASKS.length, t(task.title), t(task.desc));
       if (!live()) return;
-      Object.assign(m, await task.run(area, live));
+      Object.assign(m, await task.run(area, live, rec));
       if (!live()) return;
     }
     alive = false;
-    save.assessments.push({ d: TZ.today(), age: TZ.me().age || 0, m });
+    save.assessments.push({
+      d: TZ.today(), age: TZ.me().age || 0, m, v: ASSESS_VERSION,
+      at: started.toISOString(), mins: Math.round((Date.now() - started) / 6000) / 10, warmup, dev, trials,
+    });
     persist();
     Sound.win();
     await TZ.modal(`${TZ.charWrap('happy')}<h2>${t('as_done')}</h2>`, [{ id: 'ok', label: t('as_view'), cls: 'primary' }]);
@@ -289,7 +348,8 @@
     $('#screen-report').innerHTML = `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${TZ.BACK}</button><h2>${t('rep_title')}</h2></header>
       <div class="scroll report">
         <div class="rep-head"><b>${esc(t('rep_for', TZ.playerName(TZ.me()), cur.age))}</b><small>${t('rep_date', cur.d)}</small>
-          ${prev ? `<div class="badge">${t('rep_improved', improved, DOMAINS.length)}</div><small>${t('rep_vs', prev.d)}</small>` : `<p>${t('rep_first')}</p>`}</div>
+          ${prev ? `<div class="badge">${t('rep_improved', improved, DOMAINS.length)}</div><small>${t('rep_vs', prev.d)}</small>` : `<p>${t('rep_first')}</p>`}
+          ${prev && (prev.v || '0') !== (cur.v || '0') ? `<p class="rep-warn">${t('rep_ver')}</p>` : ''}</div>
         ${domains}
         ${list.length > 1 ? `<h3 class="sec">${t('rep_history')}</h3><div class="rep-history">${history}</div>` : ''}
         <button class="btn small no-print" data-act="print">${t('rep_print')}</button>
@@ -303,6 +363,69 @@
   TZ.actions.report = () => openReport(document.querySelector('#screen-parents.active') ? 'parents' : 'title');
   TZ.actions['report-at'] = el => openReport(TZ.reportBack, Number(el.dataset.i));
   TZ.actions.print = () => window.print();
+
+  // ---------- Research mode ----------
+  // Pseudonymous codes live on the profile; the export carries codes only, never names.
+  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function ensureCodes() {
+    const P = TZ.profiles();
+    const used = new Set(P.list.map(p => p.code).filter(Boolean));
+    let changed = false;
+    for (const p of P.list) {
+      if (p.code) continue;
+      let c;
+      do { c = 'TZ-' + Array.from({ length: 4 }, () => CODE_CHARS[rand(CODE_CHARS.length)]).join(''); } while (used.has(c));
+      used.add(c); p.code = c; changed = true;
+    }
+    if (changed) TZ.saveProfiles();
+  }
+
+  function exportResearch() {
+    ensureCodes();
+    const head = ['code', 'age', 'test_no', 'date', 'started_at', 'task_version', 'minutes', 'games_before_same_day',
+      'dev_screen', 'dev_dpr', 'dev_touch', 'dev_frame_ms', 'dev_audio_ms', 'dev_ua', 'task', 'trial', 'cond', 'target', 'resp', 'correct', 'rt_ms'];
+    const rows = [head];
+    for (const p of TZ.profiles().list) {
+      const s = TZ.readSave(p.id);
+      (s.assessments || []).forEach((a, k) => {
+        const dv = a.dev || {};
+        const base = [p.code, a.age || p.age || '', k + 1, a.d, a.at || '', a.v || 'pre-1.0', a.mins == null ? '' : a.mins, a.warmup == null ? '' : a.warmup,
+          dv.w ? `${dv.w}x${dv.h}` : '', dv.dpr, dv.touch, dv.frame, dv.audio, dv.ua];
+        for (const tr of a.trials || []) rows.push([...base, tr.task, tr.i, tr.cond, tr.target, tr.resp, tr.correct, tr.rt]);
+        // Summary scores as rows with task "summary", so one file holds everything
+        for (const [key, val] of Object.entries(a.m || {})) rows.push([...base, 'summary', '', key, '', '', '', val]);
+      });
+    }
+    TZ.downloadCsv(`tzavvanit-research-${TZ.today()}.csv`, rows);
+  }
+
+  const rerenderKeepScroll = () => {
+    const sc = document.querySelector('#screen-parents .scroll');
+    const y = sc ? sc.scrollTop : 0;
+    TZ.rerender();
+    const sc2 = document.querySelector('#screen-parents .scroll');
+    if (sc2) sc2.scrollTop = y;
+  };
+  TZ.actions['research-toggle'] = () => {
+    research.on = !research.on;
+    saveResearch();
+    if (research.on) ensureCodes();
+    rerenderKeepScroll();
+  };
+  TZ.actions['research-export'] = () => exportResearch();
+
+  TZ.eduExtras.push(() => {
+    const head = `<h3 class="sec">${t('rs_title')}</h3>
+      <div class="setting"><div class="info"><b>${t('rs_on')}</b><small>${t('rs_desc')}</small></div>
+      <button class="toggle" data-act="research-toggle" aria-pressed="${research.on}" aria-label="${t('rs_on')}"></button></div>`;
+    if (!research.on) return head;
+    ensureCodes();
+    const rows = TZ.profiles().list.map(p => `<tr><td><b dir="ltr">${esc(p.code)}</b></td><td>${esc(TZ.playerName(p))}</td><td>${p.age || ''}</td><td>${(TZ.readSave(p.id).assessments || []).length}</td></tr>`).join('');
+    return `${head}
+      <div class="edu-table-wrap"><table class="edu-table"><thead><tr><th>${t('rs_code')}</th><th>${t('playerName')}</th><th>${t('age')}</th><th>${t('rs_tests')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="p-note">${t('rs_note')}</p>
+      <div class="edu-actions"><button class="btn small primary" data-act="research-export">${t('rs_export')}</button><small class="muted">${t('rs_ver', ASSESS_VERSION)}</small></div>`;
+  });
 
   // Home-screen card: first assessment, follow-up reminder every 28 days
   TZ.hubCards.push(() => {

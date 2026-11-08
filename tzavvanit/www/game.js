@@ -596,10 +596,14 @@
       for (const h of s.history || []) rows.push([playerName(p), p.age || '', 'session', h.d, h.g, h.s, h.a, h.lv, '', '']);
       for (const a of s.assessments || []) for (const [k, v] of Object.entries(a.m || {})) rows.push([playerName(p), a.age || p.age || '', 'assessment', a.d, 'assessment', '', '', '', k, v]);
     }
-    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    downloadCsv(`tzavvanit-${today()}.csv`, rows);
+  }
+  // Saves rows as a UTF-8 CSV (with BOM, so Excel shows Hebrew correctly)
+  function downloadCsv(name, rows) {
+    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = `tzavvanit-${today()}.csv`;
+    a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     toast(t('exported'));
   }
@@ -619,7 +623,8 @@
         <button class="btn small" data-act="export">${t('exportCsv')}</button>
       </div>
       <h3 class="sec">${t('eduAll')}</h3>
-      <div class="edu-table-wrap"><table class="edu-table"><thead><tr><th>${t('playerName')}</th><th>${t('age')}</th><th>${t('sessions')}</th><th>${t('lastActive')}</th><th>${t('lastTest')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      <div class="edu-table-wrap"><table class="edu-table"><thead><tr><th>${t('playerName')}</th><th>${t('age')}</th><th>${t('sessions')}</th><th>${t('lastActive')}</th><th>${t('lastTest')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${window.TZ.eduExtras.map(f => f()).join('')}`;
   }
 
   // Daily return reward, grows with the streak
@@ -1207,7 +1212,9 @@
 
   window.TZ = {
     $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini, difficulty,
-    show, today, esc, me, playerName, BACK, PLAY, actions: {}, hubCards: [],
+    show, today, esc, me, playerName, BACK, PLAY, actions: {}, hubCards: [], eduExtras: [],
+    profiles: () => profiles, saveProfiles, readSave, downloadCsv,
+    rerender: () => renderParents(),
     registerGame: g => GAMES.push(g),
     addStrings: (he, en) => { Object.assign(STR.he, he); Object.assign(STR.en, en); },
   };
