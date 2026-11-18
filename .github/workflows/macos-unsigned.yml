@@ -1,0 +1,56 @@
+# Unsigned macOS .app zip. No signing, no notarization, no release, no Hosting, no store upload.
+# Artifacts only. The workflow is new, so it runs from this branch / its pull request.
+name: macOS unsigned build
+
+on:
+  pull_request:
+    paths:
+      - 'desktop-mac/**'
+      - '.github/workflows/macos-unsigned.yml'
+  push:
+    branches: [build/macos-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-unsigned-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_NAME: Tzavvanit
+      APP_ID: labs.scitedragames.tzavvanit
+      WEB_ROOT: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Stage the web UI into desktop-mac/web
+        run: |
+          set -euo pipefail
+          rm -rf desktop-mac/web
+          mkdir -p desktop-mac/web
+          rsync -a \
+            --exclude '.git/' --exclude '.github/' --exclude 'desktop-mac/' \
+            --exclude 'node_modules/' --exclude 'mobile/' --exclude 'android/' \
+            --exclude 'tests/' --exclude 'test/' --exclude '.firebaserc' \
+            --exclude 'firestore.rules' --exclude 'firestore.indexes.json' \
+            --exclude 'unity/' --exclude 'Tools/' \
+            "${WEB_ROOT%/}/" desktop-mac/web/
+          test -f desktop-mac/web/index.html
+
+      - name: Package unsigned arm64 and x64 .app zips
+        run: bash desktop-mac/package-mac.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tzavvanit-macos-unsigned
+          path: dist-mac/*.zip
+          if-no-files-found: error
+          retention-days: 14
