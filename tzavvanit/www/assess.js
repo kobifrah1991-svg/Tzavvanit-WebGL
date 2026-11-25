@@ -79,8 +79,8 @@
     { id: 'speed', games: ['odd', 'math'], metrics: [{ k: 'rt_ms', l: 'm_rt', u: 'u_ms', low: true, pick: true, minDelta: 25 }, { k: 'rt_sd', l: 'm_rtsd', u: 'u_ms', low: true }] },
     { id: 'attn', games: ['rain', 'odd'], metrics: [{ k: 'gng_omit', l: 'm_omit', u: 'u_pct', low: true, pick: true, minDelta: 5 }] },
     { id: 'inhib', games: ['stroop', 'rain'], metrics: [{ k: 'gng_comm', l: 'm_comm', u: 'u_pct', low: true, pick: true, minDelta: 8 }] },
-    { id: 'wm', games: ['simon', 'pairs'], metrics: [{ k: 'span', l: 'm_span', u: 'u_items', low: false, pick: true, minDelta: 1 }] },
-    { id: 'ctrl', games: ['stroop', 'pattern'], metrics: [{ k: 'st_interf', l: 'm_interf', u: 'u_ms', low: true, pick: true, minDelta: 40 }, { k: 'st_acc', l: 'm_stacc', u: 'u_pct', low: false }] },
+    { id: 'wm', games: ['simon', 'echo', 'pairs'], metrics: [{ k: 'span', l: 'm_span', u: 'u_items', low: false, pick: true, minDelta: 1 }] },
+    { id: 'ctrl', games: ['stroop', 'path', 'pattern'], metrics: [{ k: 'st_interf', l: 'm_interf', u: 'u_ms', low: true, pick: true, minDelta: 40 }, { k: 'st_acc', l: 'm_stacc', u: 'u_pct', low: false }] },
     { id: 'timing', games: ['beat', 'simon'], metrics: [{ k: 'tm_async', l: 'm_async', u: 'u_ms', low: true, pick: true, minDelta: 15 }, { k: 'tm_cv', l: 'm_cv', u: 'u_pct', low: true }] },
   ];
 
