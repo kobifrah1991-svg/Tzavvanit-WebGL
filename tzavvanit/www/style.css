@@ -834,3 +834,17 @@ body.shapes .choice .shape { opacity: 1; }
 .st-kind svg { width: 24px; height: 24px; }
 .st-name { font-size: 12px; font-weight: 700; opacity: .7; margin: 8px 0 10px; }
 @media (prefers-reduced-motion: reduce) { .stage-banner { animation: none !important; } }
+
+/* Champion stage rules */
+.boss-hearts { display: flex; gap: 0; font-size: 13px; flex: none; }
+.boss-hearts i { font-style: normal; transition: transform .3s, opacity .3s, filter .3s; }
+.boss-hearts i.lost { opacity: .35; filter: grayscale(1); transform: scale(.7) rotate(-20deg); }
+.boss-smoke { position: absolute; inset: 120px 0 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.boss-smoke span { position: absolute; left: 0; width: 62%; height: 120px; border-radius: 60px; transform: translateX(-130%);
+  background: radial-gradient(ellipse at 35% 50%, rgba(214,218,228,.98), rgba(198,203,216,.92) 50%, rgba(198,203,216,0) 72%); filter: blur(3px); }
+.boss-smoke span:nth-child(1) { top: 12%; }
+.boss-smoke span:nth-child(2) { top: 42%; width: 75%; height: 150px; }
+.boss-smoke span:nth-child(3) { top: 70%; }
+.stage-banner .br-line { font-size: 13px; color: #123b4a; }
+.stage-banner .br-line { display: block; max-width: 260px; }
+.stage-banner .br-line b { font-size: 14px; color: var(--sk, #e0482f); }

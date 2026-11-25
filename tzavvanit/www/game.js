@@ -126,6 +126,11 @@
     st_title: 'בוחרים שלב', st_rec: 'מומלץ', st_locked: 'מסיימים את השלב הקודם כדי לפתוח',
     st_boss: 'שלב אלופים', st_bonus: 'שלב בונוס', st_bossD: 'פרס כפול ועוד XP', st_bonusD: 'מטבעות כפולים',
     st_next: 'לשלב הבא', st_map: 'לשלבים', st_restart: 'מתחילים מחדש', st_stars: (n, of) => `${n} מתוך ${of} כוכבים`,
+    br_hearts: 'שלושה לבבות', br_heartsD: 'שלוש טעויות, והדרקון מנצח',
+    br_smoke: 'עשן הדרקון', br_smokeD: 'עננים עוברים על המסך',
+    br_wind: 'רוח חזקה', br_windD: 'כל המסך מתנדנד',
+    boss_rules: 'החוק המיוחד', boss_lost: 'הדרקון ניצח הפעם!', boss_lostD: 'נגמרו הלבבות. קצת מנוחה ומנסים שוב?',
+    boss_won: 'ניצחתם בשלב האלופים!',
     st_names: ['אחו פורח', 'חוף הצדפים', 'יער הפטריות', 'הר השלג', 'מערת הדרקון', 'מדבר הזהב', 'עמוק בים', 'ארץ הממתקים', 'שקיעה סגולה', 'ארמון בעננים'],
     parents: 'אזור הורים', parents_d: 'התקדמות, זמן משחק והפסקות',
     pgTitle: 'רק להורים', pgQ: (a, b) => `כמה זה ${a} × ${b}?`, pgWrong: 'לא נכון, נסו שוב',
@@ -160,6 +165,11 @@
     st_title: 'Choose a stage', st_rec: 'Suggested', st_locked: 'Finish the stage before to open it',
     st_boss: 'Champion stage', st_bonus: 'Bonus stage', st_bossD: 'Double prize and extra XP', st_bonusD: 'Double coins',
     st_next: 'Next stage', st_map: 'Stages', st_restart: 'Start over', st_stars: (n, of) => `${n} of ${of} stars`,
+    br_hearts: 'Three hearts', br_heartsD: 'Three mistakes and the dragon wins',
+    br_smoke: 'Dragon smoke', br_smokeD: 'Clouds drift across the screen',
+    br_wind: 'Strong wind', br_windD: 'The whole screen sways',
+    boss_rules: 'Special rule', boss_lost: 'The dragon won this time!', boss_lostD: 'Out of hearts. A short rest and try again?',
+    boss_won: 'You beat the champion stage!',
     st_names: ['Flower Meadow', 'Shell Beach', 'Mushroom Forest', 'Snow Mountain', 'Dragon Cave', 'Golden Desert', 'Deep Sea', 'Candy Land', 'Purple Sunset', 'Cloud Palace'],
     parents: 'Parents area', parents_d: 'Progress, play time and breaks',
     pgTitle: 'Parents only', pgQ: (a, b) => `What is ${a} × ${b}?`, pgWrong: 'Not quite, try again',
@@ -343,6 +353,25 @@
     const won = Object.keys((save.stages || {})[id] || {}).map(Number).filter(lv => stageStars(id, lv) > 0);
     return Math.min(MAX_DIFF, Math.max(save.adapt[id] || 1, won.length ? Math.max(...won) + 1 : 1));
   };
+  // Champion stages (5 and 10) add a special rule; stage 10 combines two.
+  // Hearts only suit games that sound a mistake (Sound.fail) on each error.
+  const BOSS_RULES = {
+    stroop: [['smoke'], ['hearts', 'smoke']], rain: [['wind'], ['hearts', 'wind']], lab: [['hearts'], ['hearts', 'smoke']],
+    pairs: [['smoke'], ['smoke', 'wind']], math: [['hearts'], ['hearts', 'wind']], pattern: [['smoke'], ['hearts', 'smoke']],
+    odd: [['wind'], ['hearts', 'wind']], beat: [['smoke'], ['smoke', 'wind']], echo: [['hearts'], ['hearts', 'smoke']],
+    rotate: [['wind'], ['hearts', 'wind']], path: [['hearts'], ['hearts', 'smoke']], shells: [['hearts'], ['hearts', 'wind']],
+    tide: [['smoke'], ['hearts', 'smoke']], island: [['smoke'], ['smoke', 'wind']], net: [['wind'], ['hearts', 'wind']],
+  };
+  const RULE_ICON = { hearts: '❤️', smoke: '🌫️', wind: '🌀' };
+  const calmMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const bossRules = (id, lv) => {
+    if (stageKind(lv) !== 'boss') return [];
+    let r = (BOSS_RULES[id] || [['smoke'], ['smoke', 'wind']])[lv === 5 ? 0 : 1];
+    // Swaying is left out for players who asked for less motion
+    if (calmMotion()) r = [...new Set(r.map(x => x === 'wind' ? 'smoke' : x))];
+    return r;
+  };
+  let boss = null;
   const starsFor = acc => acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : acc >= 0.45 ? 1 : 0;
   // Logs a finished session and nudges the game's difficulty: step +1 (too easy), 0, or -1 (too hard)
   function recordSession(id, score, acc, step = 0) {
@@ -472,6 +501,7 @@
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === `screen-${name}`));
     if (current === 'game' && name !== 'game') G.token++;
     if (current === 'mini' && miniCleanup) { miniCleanup(); miniCleanup = null; }
+    if (name !== 'mini') boss = null;
     current = name;
     if (name === 'title') { renderTitle(); if (breakDue && !modalResolve) setTimeout(breakReminder, 400); }
     if (name === 'parents') renderParents();
@@ -1190,6 +1220,28 @@
 
   // ---------- Mini-games frame (games themselves live in minigames.js) ----------
   let miniBack = null, miniGame = null, stagesGame = null;
+  const soundFail = Sound.fail.bind(Sound);
+  Sound.fail = (...a) => {
+    soundFail(...a);
+    if (!boss || !boss.hearts || current !== 'mini') return;
+    boss.hearts--;
+    const h = $('#boss-hearts');
+    if (h) h.children[boss.hearts].classList.add('lost');
+    vibrate(60);
+    if (!boss.hearts) bossLost();
+  };
+  async function bossLost() {
+    const game = boss.game, lv = stagePick && stagePick.lv;
+    boss = null;
+    if (miniCleanup) { miniCleanup(); miniCleanup = null; }
+    await sleep(500);
+    if (current !== 'mini') return;
+    const r = await modal(`${charWrap('sad')}<h2>${t('boss_lost')}</h2><p>${t('boss_lostD')}</p>`,
+      [{ id: 'again', label: t('again'), cls: 'primary' }, { id: 'stages', label: t('st_map') }, { id: 'home', label: t('home') }]);
+    if (r === 'again') startStage(game, lv);
+    else if (r === 'stages') openStages(game);
+    else { stagePick = null; show('title'); }
+  }
   const RESTART = `<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   function startStage(game, lv) {
     stagePick = { id: game.id, lv };
@@ -1214,7 +1266,7 @@
           <span class="st-emo">${ok ? STAGE_EMOJI[lv - 1] : LOCK}</span><b>${lv}</b>
           <span class="lvl-stars">${[1, 2, 3].map(n => STAR(n <= s)).join('')}</span>
           ${lv === rec && ok ? `<i class="st-rec">${t('st_rec')}</i>` : ''}${kind && ok ? `<i class="st-kind">${kind === 'boss' ? CROWN : '✨'}</i>` : ''}</button>
-        <span class="st-name">${t('st_names')[lv - 1]}${kind ? ` · ${t('st_' + kind)}` : ''}</span></div>`;
+        <span class="st-name">${t('st_names')[lv - 1]}${kind ? ` · ${t('st_' + kind)}` : ''}${kind === 'boss' ? ` ${bossRules(g.id, lv).map(r => RULE_ICON[r]).join('')}` : ''}</span></div>`;
     }).join('');
     $('#screen-stages').innerHTML = topbar(gameName(g), `<div class="star-count">${STAR(true)}<span>${total}/${MAX_DIFF * 3}</span></div>`) +
       `<div class="scroll st-scroll" style="--gc:${g.color}"><div class="st-head">${(window.TZ.previews || {})[g.id] || ''}<div><h3>${t('st_title')}</h3>
@@ -1226,17 +1278,27 @@
     open(game) {
       if (stagePick && stagePick.id !== game.id) stagePick = null;
       const staged = picked(game.id), lv = difficulty(game.id), kind = staged ? stageKind(lv) : '';
+      const rules = staged ? bossRules(game.id, lv) : [];
+      boss = rules.length ? { game, rules, hearts: rules.includes('hearts') ? 3 : 0 } : null;
       const scr = $('#screen-mini');
       scr.dataset.theme = staged ? lv : '';
       scr.innerHTML = `<div class="stage-deco" aria-hidden="true">${staged ? `<span>${STAGE_EMOJI[lv - 1]}</span>`.repeat(4) : ''}</div>
         <header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button>
         ${staged ? `<button class="icon-btn" data-restart aria-label="${t('st_restart')}">${RESTART}</button>` : ''}
-        <div class="hud-title">${gameName(game)}<small class="diff-chip${kind ? ' ' + kind : ''}">${staged ? `${STAGE_EMOJI[lv - 1]} ` : ''}${t('diffLabel', lv)}</small></div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
+        <div class="hud-title">${gameName(game)}<small class="diff-chip${kind ? ' ' + kind : ''}">${staged ? `${STAGE_EMOJI[lv - 1]} ` : ''}${t('diffLabel', lv)}</small></div><div class="mini-extra" id="mini-extra"></div>${boss && boss.hearts ? `<div class="boss-hearts" id="boss-hearts">${'<i>❤️</i>'.repeat(3)}</div>` : ''}<div class="score" id="mini-score">0</div></header>
         <div class="timebar" id="mini-time"><i></i></div><div class="mini-area" id="mini-area"></div>
-        ${staged ? `<div class="stage-banner ${kind}" aria-hidden="true"><b>${STAGE_EMOJI[lv - 1]} ${t('diffLabel', lv)} · ${t('st_names')[lv - 1]}</b>${kind ? `<small>${t('st_' + kind)} · ${t('st_' + kind + 'D')}</small>` : ''}</div>` : ''}`;
+        ${rules.includes('smoke') ? '<div class="boss-smoke" aria-hidden="true"><span></span><span></span><span></span></div>' : ''}
+        ${staged ? `<div class="stage-banner ${kind}" aria-hidden="true"><b>${STAGE_EMOJI[lv - 1]} ${t('diffLabel', lv)} · ${t('st_names')[lv - 1]}</b>${kind ? `<small>${t('st_' + kind)} · ${t('st_' + kind + 'D')}</small>` : ''}${rules.map(r => `<span class="br-line">${RULE_ICON[r]} <b>${t('br_' + r)}</b> · ${t('br_' + r + 'D')}</span>`).join('')}</div>` : ''}`;
       show('mini');
       // The banner fades by animation; the timer also clears it when motion is reduced
-      setTimeout(() => { const b = scr.querySelector('.stage-banner'); if (b) b.remove(); }, 2300);
+      setTimeout(() => { const b = scr.querySelector('.stage-banner'); if (b) b.remove(); }, rules.length ? 3600 : 2300);
+      // Smoke and wind run on the Web Animations API, so they keep moving as part of the challenge
+      scr.querySelectorAll('.boss-smoke span').forEach((c, i) => c.animate(
+        [{ transform: 'translateX(-130%)' }, { transform: 'translateX(130vw)' }],
+        { duration: 9000 + i * 2500, delay: 1500 + i * 3000, iterations: Infinity, easing: 'linear', direction: i % 2 ? 'reverse' : 'normal' }));
+      if (rules.includes('wind')) $('#mini-area').animate(
+        [{ transform: 'rotate(-1.6deg) translateX(-8px)' }, { transform: 'rotate(1.6deg) translateX(8px)' }],
+        { duration: 2600, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
       miniGame = game;
       miniBack = () => (staged ? openStages(game) : show('title'));
       return $('#mini-area');
@@ -1254,10 +1316,12 @@
     async finish(game, score, coins, xp, lines = '', perf = { acc: 1, step: 0 }) {
       if (miniCleanup) { miniCleanup(); miniCleanup = null; }
       const staged = picked(game.id), kind = staged ? stageKind(stagePick.lv) : '';
+      const wonBoss = !!boss && boss.game === game;
+      boss = null;
       const ch = recordSession(game.id, score, perf.acc, perf.step);
       if (staged && !perf.plain) {
         if (kind) { coins *= 2; if (kind === 'boss') xp = Math.round(xp * 1.5); }
-        lines = `<div class="stage-stars">${[1, 2, 3].map(n => STAR(n <= ch.stars)).join('')}</div>${kind ? `<div class="badge">${t('st_' + kind)} · ${t('st_' + kind + 'D')}</div>` : ''}` + lines;
+        lines = `<div class="stage-stars">${[1, 2, 3].map(n => STAR(n <= ch.stars)).join('')}</div>${kind ? `<div class="badge">${wonBoss ? `${t('boss_won')} ` : ''}${t('st_' + kind)} · ${t('st_' + kind + 'D')}</div>` : ''}` + lines;
       }
       // A plain finish (the movement break) has no difficulty change or record to show
       if (!perf.plain) lines += diffHtml(ch);
