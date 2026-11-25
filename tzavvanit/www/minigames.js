@@ -1,5 +1,5 @@
 'use strict';
-// The games inside Tzavvanit besides the Sound Journey. Each one registers with
+// The games inside Tzivonit besides the Sound Journey. Each one registers with
 // TZ.registerGame and runs inside the shared mini-game frame (TZ.Mini).
 (() => {
   const { $, sleep, rand, save, t, Sound, vibrate, Mini, SHAPES, HEART } = TZ;

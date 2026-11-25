@@ -396,7 +396,7 @@
         for (const [key, val] of Object.entries(a.m || {})) rows.push([...base, 'summary', '', key, '', '', '', val]);
       });
     }
-    TZ.downloadCsv(`tzavvanit-research-${TZ.today()}.csv`, rows);
+    TZ.downloadCsv(`tzivonit-research-${TZ.today()}.csv`, rows);
   }
 
   const rerenderKeepScroll = () => {

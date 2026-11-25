@@ -73,12 +73,12 @@
       about: 'צבעונית · Scitedra Games · בלי פרסומות ובלי איסוף מידע',
     },
     en: {
-      logo: 'Tzavvanit', subtitle: 'Journey of Colors', play: 'Play', endless: 'Endless Challenge', wardrobe: 'Wardrobe', settings: 'Settings',
+      logo: 'Tzivonit', subtitle: 'Journey of Colors', play: 'Play', endless: 'Endless Challenge', wardrobe: 'Wardrobe', settings: 'Settings',
       chooseLevel: 'Choose a level', level: 'Level', boss: 'Boss level', round: 'Round',
       listen: 'Listen...', listenEar: 'Listen in the dark...',
       turn_order: 'Your turn! Same order', turn_rhythm: 'Your turn! Same rhythm', turn_reverse: 'Your turn! Backwards', turn_ear: 'Your turn! What did you hear?',
       mode_order: 'In order', mode_rhythm: 'Rhythm', mode_reverse: 'Reverse', mode_ear: 'In the dark', mode_mix: 'Surprise',
-      intro_order: 'Tzavvanit plays a sequence of colors. Listen and watch, then tap the same colors in the same order.',
+      intro_order: 'Tzivonit plays a sequence of colors. Listen and watch, then tap the same colors in the same order.',
       intro_rhythm: 'In this forest the rhythm matters too! Tap in the same order and the same rhythm – not too fast, not too slow.',
       intro_reverse: 'In the Mirror Desert everything is backwards: tap the sequence from the end to the start!',
       intro_ear: 'The cave is dark and the buttons don\'t light up. Recognize each color by its sound alone! First, let\'s meet the sounds.',
@@ -101,7 +101,7 @@
       s_shapes: 'Shapes on buttons', s_shapes_d: 'Helps tell the colors apart',
       s_lang: 'Language', s_reset: 'Reset progress', s_reset_d: 'Deletes stars and records',
       resetQ: 'Delete all progress?', yes: 'Yes, delete', no: 'Cancel',
-      about: 'Tzavvanit · Scitedra Games · No ads, no data collection',
+      about: 'Tzivonit · Scitedra Games · No ads, no data collection',
     },
   };
   Object.assign(STR.he, {
@@ -663,7 +663,7 @@
       for (const h of s.history || []) rows.push([playerName(p), p.age || '', 'session', h.d, h.g, h.s, h.a, h.lv, '', '']);
       for (const a of s.assessments || []) for (const [k, v] of Object.entries(a.m || {})) rows.push([playerName(p), a.age || p.age || '', 'assessment', a.d, 'assessment', '', '', '', k, v]);
     }
-    downloadCsv(`tzavvanit-${today()}.csv`, rows);
+    downloadCsv(`tzivonit-${today()}.csv`, rows);
   }
   // Saves rows as a UTF-8 CSV (with BOM, so Excel shows Hebrew correctly)
   function downloadCsv(name, rows) {
