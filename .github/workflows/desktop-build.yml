@@ -125,8 +125,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          WIN=$(cat out/windows/dist-signing.txt)
-          MAC=$(cat out/mac/dist-signing.txt)
+          # upload-artifact keeps paths below the common folder, so files may sit in a dist/ subfolder
+          WIN=$(cat $(find out/windows -name dist-signing.txt))
+          MAC=$(cat $(find out/mac -name dist-signing.txt))
+          FILES=$(find out -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.apk' \) ! -name '*uninstaller*')
+          echo "$FILES"
+          [ -n "$FILES" ] || { echo "::error::no build files found"; exit 1; }
           {
             echo "Tzivonit (צבעונית) desktop and Android builds."
             echo
@@ -144,4 +148,4 @@ jobs:
           # Created as a draft: the owner reviews it and clicks Publish.
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "Tzivonit ${GITHUB_REF_NAME#desktop-v}" --notes-file notes.md \
-            out/windows/*.exe out/mac/*.dmg out/mac/*.zip $(ls out/android/*.apk 2>/dev/null)
+            $FILES
