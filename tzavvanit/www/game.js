@@ -329,7 +329,7 @@
   const WORKOUT_BONUS = 40;
   function ensureWorkout() {
     if (save.workout && save.workout.date === today()) return save.workout;
-    const open = GAMES.filter(g => g.id !== 'simon' && !g.noWorkout && g.minLevel <= playerLevel()).sort(() => Math.random() - 0.5);
+    const open = GAMES.filter(g => g.id !== 'simon' && !g.noWorkout && !(kinder() && g.kinderHide) && g.minLevel <= playerLevel()).sort(() => Math.random() - 0.5);
     const picked = [];
     for (const g of open) if (picked.length < 3 && !picked.some(p => p.skill === g.skill)) picked.push(g);
     save.workout = { date: today(), games: picked.map(g => g.id), done: [], claimed: false };
@@ -343,15 +343,17 @@
   // Each mini-game has MAX_DIFF stages. The child picks one on the stage map (stagePick);
   // without a pick (daily workout, break) the game runs at its suggested adaptive level.
   let stagePick = null;
+  const kinder = () => !!save.kinder;
+  const stageCap = () => kinder() ? 5 : MAX_DIFF;
   const picked = id => stagePick && stagePick.id === id;
-  const difficulty = id => picked(id) ? stagePick.lv : save.adapt[id] || 1;
+  const difficulty = id => Math.min(stageCap(), picked(id) ? stagePick.lv : save.adapt[id] || 1);
   const STAGE_EMOJI = ['🌼', '🐚', '🍄', '❄️', '🐉', '🌵', '🐙', '🍭', '🌇', '👑'];
   const stageKind = lv => lv % 5 === 0 ? 'boss' : lv === 3 || lv === 8 ? 'bonus' : '';
   const stageStars = (id, lv) => ((save.stages || {})[id] || {})[lv] || 0;
   // Open stages: everything up to the suggested level, and one past the best stage won with a star
   const stagesOpen = id => {
     const won = Object.keys((save.stages || {})[id] || {}).map(Number).filter(lv => stageStars(id, lv) > 0);
-    return Math.min(MAX_DIFF, Math.max(save.adapt[id] || 1, won.length ? Math.max(...won) + 1 : 1));
+    return Math.min(stageCap(), Math.max(save.adapt[id] || 1, won.length ? Math.max(...won) + 1 : 1));
   };
   // Champion stages (5 and 10) add a special rule; stage 10 combines two.
   // Hearts only suit games that sound a mistake (Sound.fail) on each error.
@@ -366,12 +368,14 @@
   const calmMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const bossRules = (id, lv) => {
     if (stageKind(lv) !== 'boss') return [];
+    if (kinder()) return ['smoke'];
     let r = (BOSS_RULES[id] || [['smoke'], ['smoke', 'wind']])[lv === 5 ? 0 : 1];
     // Swaying is left out for players who asked for less motion
     if (calmMotion()) r = [...new Set(r.map(x => x === 'wind' ? 'smoke' : x))];
     return r;
   };
   let boss = null;
+  const HOOKS = { open: [], finish: [], show: [] };
   const starsFor = acc => acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : acc >= 0.45 ? 1 : 0;
   // Logs a finished session and nudges the game's difficulty: step +1 (too easy), 0, or -1 (too hard)
   function recordSession(id, score, acc, step = 0) {
@@ -380,8 +384,9 @@
     const adapt = save.adapt[id] || 1;
     // A chosen stage moves the suggestion up, and moves it down only when it was the suggested stage
     if (!picked(id) || after > adapt || before === adapt) save.adapt[id] = after;
-    let stars = 0;
+    let stars = 0, prevStars = 0;
     if (picked(id)) {
+      prevStars = stageStars(id, before);
       stars = starsFor(acc);
       const st = save.stages || (save.stages = {});
       st[id] = st[id] || {};
@@ -390,7 +395,7 @@
     save.history.push({ d: today(), g: id, s: score, a: Math.round(Math.max(0, Math.min(1, acc)) * 100), lv: before });
     if (save.history.length > 400) save.history.splice(0, save.history.length - 400);
     persist();
-    return { before, after, stars };
+    return { before, after, stars, prevStars };
   }
   const diffHtml = ch => ch.after > ch.before ? `<div class="badge diff-up">${t('diffUp', ch.after)}</div>`
     : ch.after < ch.before ? `<p class="diff-note">${t('diffDown')}</p>` : `<p class="diff-note">${t('diffSame', ch.after)}</p>`;
@@ -502,6 +507,7 @@
     if (current === 'game' && name !== 'game') G.token++;
     if (current === 'mini' && miniCleanup) { miniCleanup(); miniCleanup = null; }
     if (name !== 'mini') boss = null;
+    HOOKS.show.forEach(f => f(name));
     current = name;
     if (name === 'title') { renderTitle(); if (breakDue && !modalResolve) setTimeout(breakReminder, 400); }
     if (name === 'parents') renderParents();
@@ -531,7 +537,7 @@
           : `<button class="btn small${full ? ' primary' : ''}" data-claim="${i}" ${full ? '' : `data-locked="${missionText(m)}" aria-disabled="true"`}>${DROP}${m.reward}</button>`}
       </div>`;
     }).join('');
-    const games = GAMES.map(g => {
+    const games = GAMES.filter(g => !(kinder() && g.kinderHide)).map(g => {
       const open = g.minLevel <= L.lvl;
       const art = (window.TZ.previews || {})[g.id] || `<span class="game-icon">${g.icon}</span>`;
       return `<button class="game-card${open ? '' : ' locked'}" style="--gc:${g.color}" data-game="${g.id}" ${open ? '' : `data-locked="${t('unlockAt', g.minLevel)}" aria-disabled="true"`}>
@@ -1257,7 +1263,7 @@
     if (!g) return show('title');
     const open = stagesOpen(g.id), rec = save.adapt[g.id] || 1;
     let total = 0;
-    const nodes = Array.from({ length: MAX_DIFF }, (_, i) => {
+    const nodes = Array.from({ length: stageCap() }, (_, i) => {
       const lv = i + 1, ok = lv <= open, s = stageStars(g.id, lv), kind = stageKind(lv);
       total += s;
       return `<div class="st-row" style="--off:${[0, 38, 58, 38, 0, -38, -58, -38][i % 8]}px">
@@ -1268,7 +1274,7 @@
           ${lv === rec && ok ? `<i class="st-rec">${t('st_rec')}</i>` : ''}${kind && ok ? `<i class="st-kind">${kind === 'boss' ? CROWN : '✨'}</i>` : ''}</button>
         <span class="st-name">${t('st_names')[lv - 1]}${kind ? ` · ${t('st_' + kind)}` : ''}${kind === 'boss' ? ` ${bossRules(g.id, lv).map(r => RULE_ICON[r]).join('')}` : ''}</span></div>`;
     }).join('');
-    $('#screen-stages').innerHTML = topbar(gameName(g), `<div class="star-count">${STAR(true)}<span>${total}/${MAX_DIFF * 3}</span></div>`) +
+    $('#screen-stages').innerHTML = topbar(gameName(g), `<div class="star-count">${STAR(true)}<span>${total}/${stageCap() * 3}</span></div>`) +
       `<div class="scroll st-scroll" style="--gc:${g.color}"><div class="st-head">${(window.TZ.previews || {})[g.id] || ''}<div><h3>${t('st_title')}</h3>
         <span class="chip">${t('sk_' + g.skill)}</span></div></div><div class="st-trail">${nodes}</div></div>`;
     const cur = $('#screen-stages .st-node.rec');
@@ -1300,6 +1306,7 @@
         [{ transform: 'rotate(-1.6deg) translateX(-8px)' }, { transform: 'rotate(1.6deg) translateX(8px)' }],
         { duration: 2600, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
       miniGame = game;
+      HOOKS.open.forEach(f => f(game, staged, lv));
       miniBack = () => (staged ? openStages(game) : show('title'));
       return $('#mini-area');
     },
@@ -1340,8 +1347,9 @@
       Sound.win();
       if (reward.isBest || wkLine) confettiAt(document.body, 50);
       const praise = t('praise');
+      lines += HOOKS.finish.map(f => f(game, ch, staged, perf)).join('');
       const next = !staged && w.games.includes(game.id) ? workoutNext() : null;
-      const nextLv = staged && ch.before < MAX_DIFF && stagesOpen(game.id) > ch.before ? ch.before + 1 : 0;
+      const nextLv = staged && ch.before < stageCap() && stagesOpen(game.id) > ch.before ? ch.before + 1 : 0;
       const r = await modal(`<h2>${perf.title || (score > 0 ? praise[rand(praise.length)] : t('failTitle'))}</h2><div class="big-num">${score}</div>${lines}
         ${perf.plain ? '' : reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id] || 0}</p>`}${rewardHtml(reward)}${wkLine}`,
         [next ? { id: 'wk', label: t('wk_next', w.done.length + 1, w.games.length), cls: 'primary' } : null,
@@ -1365,7 +1373,7 @@
     $, sleep, rand, save, persist, t, Sound, vibrate, toast, modal, charWrap, STAR, HEART, DROP, CHECK, SHAPES, Mini, difficulty,
     show, today, esc, me, playerName, BACK, PLAY, actions: {}, hubCards: [], eduExtras: [],
     profiles: () => profiles, saveProfiles, readSave, downloadCsv,
-    rerender: () => renderParents(),
+    rerender: () => renderParents(), hooks: HOOKS, kinder, currentGame: () => miniGame, renderTitle: () => renderTitle(),
     registerGame: g => GAMES.push(g),
     addStrings: (he, en) => { Object.assign(STR.he, he); Object.assign(STR.en, en); },
   };

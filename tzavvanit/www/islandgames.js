@@ -70,7 +70,8 @@
     start() {
       const area = Mini.open(island);
       const lvl = TZ.difficulty('island'), ROUNDS = 3;
-      const N = Math.min(9, 5 + Math.floor(lvl / 2));
+      // Kindergarten mode starts with 3 items; older players with 5
+      const N = TZ.kinder && TZ.kinder() ? Math.min(5, 3 + Math.floor(lvl / 2)) : Math.min(9, 5 + Math.floor(lvl / 2));
       const tried = [];
       let round = 0, total = 0, accSum = 0, over = false;
       Mini.onLeave(() => { over = true; });

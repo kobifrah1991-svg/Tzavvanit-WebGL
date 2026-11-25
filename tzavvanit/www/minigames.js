@@ -43,7 +43,7 @@
 
   // ---------- Color or Word (Stroop) ----------
   const stroop = {
-    id: 'stroop', minLevel: 1, skill: 'inhibit', target: 600, color: '#ff6f59',
+    id: 'stroop', minLevel: 1, kinderHide: true, skill: 'inhibit', target: 600, color: '#ff6f59',
     icon: `<svg viewBox="0 0 48 48"><rect x="4" y="10" width="40" height="28" rx="8" fill="#fff"/><text x="24" y="31" text-anchor="middle" font-size="14" font-weight="900" fill="#ff4d4d" font-family="Arial">כחול</text></svg>`,
     start() {
       const area = Mini.open(stroop);
