@@ -50,5 +50,5 @@ npx cap open android
 
 ## מבנה הקבצים
 - `www/` – המשחק עצמו (`index.html`, `style.css`, `game.js`)
-- `capacitor.config.json` – הגדרות האפליקציה (`appId: com.scitedragames.tzavvanit`)
+- `capacitor.config.json` – הגדרות האפליקציה (`appId: com.scitedragames.tzivonit`)
 - `serve.js` – שרת קטן לבדיקה במחשב
