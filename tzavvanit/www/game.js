@@ -22,7 +22,7 @@
     stars: {}, best: 0, hat: 'none', skin: 'peach', lang: 'he', sound: true, vibe: true, assist: false, shapes: false, seenIntro: {},
     coins: 0, xp: 0, owned: { hats: ['none'], skins: ['peach'] }, bests: {}, played: 0,
     daily: null, streak: { last: '', count: 0 }, migrated: true, workout: null,
-    adapt: {}, history: [], playSecs: {}, breakMin: 20, assessments: [],
+    adapt: {}, history: [], playSecs: {}, breakMin: 20, assessments: [], stages: {},
   });
   const save = defaults();
   let loaded = {};
@@ -121,8 +121,12 @@
     wk_title: 'אימון המוח היומי', wk_desc: 'שלושה תרגילים קצרים, כל אחד מאמן מיומנות אחרת',
     wk_start: 'התחילו אימון', wk_continue: 'המשיכו', wk_next: (n, of) => `לתרגיל הבא (${n}/${of})`,
     wk_done: 'האימון היומי הושלם!', wk_doneShort: 'הושלם היום',
-    diffLabel: n => `רמת קושי ${n}`, diffUp: n => `מעולה! עולים לרמת קושי ${n}`, diffDown: 'בפעם הבאה ננסה ברמה קצת יותר נוחה',
-    diffSame: n => `נשארים ברמת קושי ${n}`,
+    diffLabel: n => `שלב ${n}`, diffUp: n => `נפתח שלב ${n}!`, diffDown: 'בפעם הבאה ננסה שלב קצת יותר נוח',
+    diffSame: n => `נשארים בשלב ${n}`,
+    st_title: 'בוחרים שלב', st_rec: 'מומלץ', st_locked: 'מסיימים את השלב הקודם כדי לפתוח',
+    st_boss: 'שלב אלופים', st_bonus: 'שלב בונוס', st_bossD: 'פרס כפול ועוד XP', st_bonusD: 'מטבעות כפולים',
+    st_next: 'לשלב הבא', st_map: 'לשלבים', st_restart: 'מתחילים מחדש', st_stars: (n, of) => `${n} מתוך ${of} כוכבים`,
+    st_names: ['אחו פורח', 'חוף הצדפים', 'יער הפטריות', 'הר השלג', 'מערת הדרקון', 'מדבר הזהב', 'עמוק בים', 'ארץ הממתקים', 'שקיעה סגולה', 'ארמון בעננים'],
     parents: 'אזור הורים', parents_d: 'התקדמות, זמן משחק והפסקות',
     pgTitle: 'רק להורים', pgQ: (a, b) => `כמה זה ${a} × ${b}?`, pgWrong: 'לא נכון, נסו שוב',
     week: 'השבוע האחרון', daysActive: 'ימים פעילים', minutes: 'דקות משחק', sessions: 'משחקים',
@@ -151,8 +155,12 @@
     wk_title: 'Daily brain workout', wk_desc: 'Three short exercises, each training a different skill',
     wk_start: 'Start workout', wk_continue: 'Continue', wk_next: (n, of) => `Next exercise (${n}/${of})`,
     wk_done: 'Daily workout complete!', wk_doneShort: 'Done today',
-    diffLabel: n => `Difficulty ${n}`, diffUp: n => `Great! Moving up to difficulty ${n}`, diffDown: 'Next time we\'ll try a slightly easier level',
-    diffSame: n => `Staying at difficulty ${n}`,
+    diffLabel: n => `Stage ${n}`, diffUp: n => `Stage ${n} unlocked!`, diffDown: 'Next time we\'ll try a slightly easier stage',
+    diffSame: n => `Staying on stage ${n}`,
+    st_title: 'Choose a stage', st_rec: 'Suggested', st_locked: 'Finish the stage before to open it',
+    st_boss: 'Champion stage', st_bonus: 'Bonus stage', st_bossD: 'Double prize and extra XP', st_bonusD: 'Double coins',
+    st_next: 'Next stage', st_map: 'Stages', st_restart: 'Start over', st_stars: (n, of) => `${n} of ${of} stars`,
+    st_names: ['Flower Meadow', 'Shell Beach', 'Mushroom Forest', 'Snow Mountain', 'Dragon Cave', 'Golden Desert', 'Deep Sea', 'Candy Land', 'Purple Sunset', 'Cloud Palace'],
     parents: 'Parents area', parents_d: 'Progress, play time and breaks',
     pgTitle: 'Parents only', pgQ: (a, b) => `What is ${a} × ${b}?`, pgWrong: 'Not quite, try again',
     week: 'Last 7 days', daysActive: 'Active days', minutes: 'Minutes played', sessions: 'Games',
@@ -322,16 +330,38 @@
 
   // ---------- Adaptive difficulty and session history ----------
   const MAX_DIFF = 10;
-  const difficulty = id => save.adapt[id] || 1;
+  // Each mini-game has MAX_DIFF stages. The child picks one on the stage map (stagePick);
+  // without a pick (daily workout, break) the game runs at its suggested adaptive level.
+  let stagePick = null;
+  const picked = id => stagePick && stagePick.id === id;
+  const difficulty = id => picked(id) ? stagePick.lv : save.adapt[id] || 1;
+  const STAGE_EMOJI = ['🌼', '🐚', '🍄', '❄️', '🐉', '🌵', '🐙', '🍭', '🌇', '👑'];
+  const stageKind = lv => lv % 5 === 0 ? 'boss' : lv === 3 || lv === 8 ? 'bonus' : '';
+  const stageStars = (id, lv) => ((save.stages || {})[id] || {})[lv] || 0;
+  // Open stages: everything up to the suggested level, and one past the best stage won with a star
+  const stagesOpen = id => {
+    const won = Object.keys((save.stages || {})[id] || {}).map(Number).filter(lv => stageStars(id, lv) > 0);
+    return Math.min(MAX_DIFF, Math.max(save.adapt[id] || 1, won.length ? Math.max(...won) + 1 : 1));
+  };
+  const starsFor = acc => acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : acc >= 0.45 ? 1 : 0;
   // Logs a finished session and nudges the game's difficulty: step +1 (too easy), 0, or -1 (too hard)
   function recordSession(id, score, acc, step = 0) {
     const before = difficulty(id);
     const after = Math.max(1, Math.min(MAX_DIFF, before + step));
-    save.adapt[id] = after;
+    const adapt = save.adapt[id] || 1;
+    // A chosen stage moves the suggestion up, and moves it down only when it was the suggested stage
+    if (!picked(id) || after > adapt || before === adapt) save.adapt[id] = after;
+    let stars = 0;
+    if (picked(id)) {
+      stars = starsFor(acc);
+      const st = save.stages || (save.stages = {});
+      st[id] = st[id] || {};
+      st[id][before] = Math.max(st[id][before] || 0, stars);
+    }
     save.history.push({ d: today(), g: id, s: score, a: Math.round(Math.max(0, Math.min(1, acc)) * 100), lv: before });
     if (save.history.length > 400) save.history.splice(0, save.history.length - 400);
     persist();
-    return { before, after };
+    return { before, after, stars };
   }
   const diffHtml = ch => ch.after > ch.before ? `<div class="badge diff-up">${t('diffUp', ch.after)}</div>`
     : ch.after < ch.before ? `<p class="diff-note">${t('diffDown')}</p>` : `<p class="diff-note">${t('diffSame', ch.after)}</p>`;
@@ -449,6 +479,7 @@
     if (name === 'map') renderMap();
     if (name === 'shop') renderShop();
     if (name === 'settings') renderSettings();
+    if (name === 'stages') renderStages();
   };
   const topbar = (title, extra = '') => `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button><h2>${title}</h2>${extra}</header>`;
   const starCount = () => `<div class="star-count">${STAR(true)}<span>${totalStars()}</span></div>`;
@@ -826,7 +857,7 @@
         { id: 'rest', label: t('breakOk'), cls: GAMES.some(g => g.id === 'dance') ? '' : 'primary' }, { id: 'more', label: t('breakMore') }]);
     // "A bit more" asks again after 5 minutes of play; resting or dancing starts a fresh count
     sessionSecs = r === 'more' ? save.breakMin * 60 - 300 : 0;
-    if (r === 'dance') GAMES.find(g => g.id === 'dance').start();
+    if (r === 'dance') { stagePick = null; GAMES.find(g => g.id === 'dance').start(); }
   }
 
   function applyLang() {
@@ -1158,14 +1189,56 @@
   }
 
   // ---------- Mini-games frame (games themselves live in minigames.js) ----------
-  let miniBack = null;
+  let miniBack = null, miniGame = null, stagesGame = null;
+  const RESTART = `<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  function startStage(game, lv) {
+    stagePick = { id: game.id, lv };
+    game.start();
+  }
+  function openStages(game) {
+    stagesGame = game;
+    show('stages');
+  }
+  // The stage map: a winding trail of MAX_DIFF stages, each with its own scene
+  function renderStages() {
+    const g = stagesGame;
+    if (!g) return show('title');
+    const open = stagesOpen(g.id), rec = save.adapt[g.id] || 1;
+    let total = 0;
+    const nodes = Array.from({ length: MAX_DIFF }, (_, i) => {
+      const lv = i + 1, ok = lv <= open, s = stageStars(g.id, lv), kind = stageKind(lv);
+      total += s;
+      return `<div class="st-row" style="--off:${[0, 38, 58, 38, 0, -38, -58, -38][i % 8]}px">
+        <button class="st-node${ok ? '' : ' locked'}${lv === rec ? ' rec' : ''}${kind ? ' ' + kind : ''}" data-theme="${lv}" ${ok ? `data-stage="${lv}"` : `data-locked="${t('st_locked')}" aria-disabled="true"`}
+          aria-label="${t('diffLabel', lv)} ${t('st_names')[lv - 1]}">
+          <span class="st-emo">${ok ? STAGE_EMOJI[lv - 1] : LOCK}</span><b>${lv}</b>
+          <span class="lvl-stars">${[1, 2, 3].map(n => STAR(n <= s)).join('')}</span>
+          ${lv === rec && ok ? `<i class="st-rec">${t('st_rec')}</i>` : ''}${kind && ok ? `<i class="st-kind">${kind === 'boss' ? CROWN : '✨'}</i>` : ''}</button>
+        <span class="st-name">${t('st_names')[lv - 1]}${kind ? ` · ${t('st_' + kind)}` : ''}</span></div>`;
+    }).join('');
+    $('#screen-stages').innerHTML = topbar(gameName(g), `<div class="star-count">${STAR(true)}<span>${total}/${MAX_DIFF * 3}</span></div>`) +
+      `<div class="scroll st-scroll" style="--gc:${g.color}"><div class="st-head">${(window.TZ.previews || {})[g.id] || ''}<div><h3>${t('st_title')}</h3>
+        <span class="chip">${t('sk_' + g.skill)}</span></div></div><div class="st-trail">${nodes}</div></div>`;
+    const cur = $('#screen-stages .st-node.rec');
+    if (cur) requestAnimationFrame(() => cur.scrollIntoView({ block: 'center' }));
+  }
   const Mini = {
     open(game) {
-      $('#screen-mini').innerHTML = `<header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button>
-        <div class="hud-title">${gameName(game)}<small class="diff-chip">${t('diffLabel', difficulty(game.id))}</small></div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
-        <div class="timebar" id="mini-time"><i></i></div><div class="mini-area" id="mini-area"></div>`;
+      if (stagePick && stagePick.id !== game.id) stagePick = null;
+      const staged = picked(game.id), lv = difficulty(game.id), kind = staged ? stageKind(lv) : '';
+      const scr = $('#screen-mini');
+      scr.dataset.theme = staged ? lv : '';
+      scr.innerHTML = `<div class="stage-deco" aria-hidden="true">${staged ? `<span>${STAGE_EMOJI[lv - 1]}</span>`.repeat(4) : ''}</div>
+        <header class="topbar"><button class="icon-btn" data-back aria-label="back">${BACK}</button>
+        ${staged ? `<button class="icon-btn" data-restart aria-label="${t('st_restart')}">${RESTART}</button>` : ''}
+        <div class="hud-title">${gameName(game)}<small class="diff-chip${kind ? ' ' + kind : ''}">${staged ? `${STAGE_EMOJI[lv - 1]} ` : ''}${t('diffLabel', lv)}</small></div><div class="mini-extra" id="mini-extra"></div><div class="score" id="mini-score">0</div></header>
+        <div class="timebar" id="mini-time"><i></i></div><div class="mini-area" id="mini-area"></div>
+        ${staged ? `<div class="stage-banner ${kind}" aria-hidden="true"><b>${STAGE_EMOJI[lv - 1]} ${t('diffLabel', lv)} · ${t('st_names')[lv - 1]}</b>${kind ? `<small>${t('st_' + kind)} · ${t('st_' + kind + 'D')}</small>` : ''}</div>` : ''}`;
       show('mini');
-      miniBack = () => show('title');
+      // The banner fades by animation; the timer also clears it when motion is reduced
+      setTimeout(() => { const b = scr.querySelector('.stage-banner'); if (b) b.remove(); }, 2300);
+      miniGame = game;
+      miniBack = () => (staged ? openStages(game) : show('title'));
       return $('#mini-area');
     },
     score(n) { $('#mini-score').textContent = n; },
@@ -1180,7 +1253,12 @@
     // perf: { acc: 0..1, step: -1 | 0 | 1 } decided by the game from how the session went
     async finish(game, score, coins, xp, lines = '', perf = { acc: 1, step: 0 }) {
       if (miniCleanup) { miniCleanup(); miniCleanup = null; }
+      const staged = picked(game.id), kind = staged ? stageKind(stagePick.lv) : '';
       const ch = recordSession(game.id, score, perf.acc, perf.step);
+      if (staged && !perf.plain) {
+        if (kind) { coins *= 2; if (kind === 'boss') xp = Math.round(xp * 1.5); }
+        lines = `<div class="stage-stars">${[1, 2, 3].map(n => STAR(n <= ch.stars)).join('')}</div>${kind ? `<div class="badge">${t('st_' + kind)} · ${t('st_' + kind + 'D')}</div>` : ''}` + lines;
+      }
       // A plain finish (the movement break) has no difficulty change or record to show
       if (!perf.plain) lines += diffHtml(ch);
       // Workout progress: this game counts once per day toward the daily workout
@@ -1198,13 +1276,19 @@
       Sound.win();
       if (reward.isBest || wkLine) confettiAt(document.body, 50);
       const praise = t('praise');
-      const next = w.games.includes(game.id) ? workoutNext() : null;
+      const next = !staged && w.games.includes(game.id) ? workoutNext() : null;
+      const nextLv = staged && ch.before < MAX_DIFF && stagesOpen(game.id) > ch.before ? ch.before + 1 : 0;
       const r = await modal(`<h2>${perf.title || (score > 0 ? praise[rand(praise.length)] : t('failTitle'))}</h2><div class="big-num">${score}</div>${lines}
         ${perf.plain ? '' : reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id] || 0}</p>`}${rewardHtml(reward)}${wkLine}`,
         [next ? { id: 'wk', label: t('wk_next', w.done.length + 1, w.games.length), cls: 'primary' } : null,
-          { id: 'again', label: t('again'), cls: next ? '' : 'primary' }, { id: 'home', label: t('home') }].filter(Boolean));
-      if (r === 'wk') GAMES.find(g => g.id === next).start();
-      else if (r === 'again') game.start(); else show('title');
+          nextLv ? { id: 'next', label: `${t('st_next')} ${STAGE_EMOJI[nextLv - 1]}`, cls: 'primary' } : null,
+          { id: 'again', label: t('again'), cls: next || nextLv ? '' : 'primary' },
+          staged ? { id: 'stages', label: t('st_map') } : null, { id: 'home', label: t('home') }].filter(Boolean));
+      if (r === 'wk') { stagePick = null; GAMES.find(g => g.id === next).start(); }
+      else if (r === 'next') startStage(game, nextLv);
+      else if (r === 'again') game.start();
+      else if (r === 'stages') openStages(game);
+      else { stagePick = null; show('title'); }
     },
   };
 
@@ -1227,6 +1311,7 @@
     if (modalResolve) { closeModal(current === 'game' ? 'map' : null); return; }
     if (current === 'game') show(G.endless ? 'title' : 'map');
     else if (current === 'mini' && miniBack) miniBack();
+    else if (current === 'stages') show('title');
     else if (current === 'parents') show('settings');
     else if (current === 'report') show(window.TZ.reportBack || 'title');
     else if (current !== 'title') show('title');
@@ -1266,8 +1351,10 @@
     if (d.buy) { const [kind, id] = d.buy.split(':'); return buyOrWear(kind, id); }
     if (d.tab) { shopTab = d.tab; return renderShop(); }
     if (d.claim) return claimMission(Number(d.claim));
-    if (d.game) { const g = GAMES.find(x => x.id === d.game); if (g) return g.start(); }
-    if (el.hasAttribute('data-workout')) { const id = workoutNext(); if (id) return GAMES.find(g => g.id === id).start(); }
+    if (d.game) { const g = GAMES.find(x => x.id === d.game); if (g) return g.noWorkout ? (stagePick = null, g.start()) : openStages(g); }
+    if (d.stage) return startStage(stagesGame, Number(d.stage));
+    if (el.hasAttribute('data-restart')) { if (miniCleanup) { miniCleanup(); miniCleanup = null; } return miniGame && miniGame.start(); }
+    if (el.hasAttribute('data-workout')) { const id = workoutNext(); stagePick = null; if (id) return GAMES.find(g => g.id === id).start(); }
     if (d.toggle) {
       save[d.toggle] = !save[d.toggle]; persist();
       document.body.classList.toggle('shapes', save.shapes);

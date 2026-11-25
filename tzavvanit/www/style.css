@@ -775,3 +775,62 @@ body.shapes .choice .shape { opacity: 1; }
 @keyframes dnMarch { 25% { transform: translateY(-6%) rotate(-4deg); } 75% { transform: translateY(-6%) rotate(4deg); } }
 @keyframes dnReach { 50% { transform: scale(.94, 1.12) translateY(-6%); } }
 @keyframes dnFree { 25% { transform: rotate(-10deg) translateX(-6%); } 75% { transform: rotate(10deg) translateX(6%); } }
+
+/* ---------- Stages: one scene per stage ---------- */
+[data-theme="1"] { --sk1: #eafbe0; --sk2: #fff8d8; --sk: #6cc04a; }
+[data-theme="2"] { --sk1: #dff4ff; --sk2: #fff0d0; --sk: #3aa7e8; }
+[data-theme="3"] { --sk1: #e6f6e6; --sk2: #f3e6d6; --sk: #c0553a; }
+[data-theme="4"] { --sk1: #eef6ff; --sk2: #ffffff; --sk: #6a9fd8; }
+[data-theme="5"] { --sk1: #ffe2d6; --sk2: #ffd2a8; --sk: #e0482f; }
+[data-theme="6"] { --sk1: #fff2cc; --sk2: #ffe2a8; --sk: #d39a1c; }
+[data-theme="7"] { --sk1: #d6f0ff; --sk2: #b9e0ff; --sk: #2f6fd8; }
+[data-theme="8"] { --sk1: #ffe6f4; --sk2: #fff0dc; --sk: #e8559f; }
+[data-theme="9"] { --sk1: #ece2ff; --sk2: #ffdcd0; --sk: #8a5ad8; }
+[data-theme="10"] { --sk1: #fffbe8; --sk2: #e6f1ff; --sk: #e0a400; }
+#screen-mini[data-theme]:not([data-theme=""]) { background: linear-gradient(180deg, var(--sk1), var(--sk2)); }
+#screen-mini > .topbar, #screen-mini > .timebar, #screen-mini > .mini-area { position: relative; z-index: 1; }
+.stage-deco { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.stage-deco span { position: absolute; font-size: 54px; opacity: .16; animation: sway 4s ease-in-out infinite; }
+.stage-deco span:nth-child(1) { top: 14%; inset-inline-start: -8px; }
+.stage-deco span:nth-child(2) { top: 46%; inset-inline-end: -10px; animation-delay: -1s; font-size: 70px; }
+.stage-deco span:nth-child(3) { bottom: 6%; inset-inline-start: 10%; animation-delay: -2s; }
+.stage-deco span:nth-child(4) { bottom: 22%; inset-inline-end: 18%; animation-delay: -3s; font-size: 40px; }
+.diff-chip.boss { color: #b3261e; }
+.diff-chip.bonus { color: #b07a00; }
+.stage-banner { position: absolute; z-index: 5; left: 50%; top: 42%; translate: -50% -50%; width: max-content; max-width: 86%;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 22px; border-radius: 22px;
+  background: #fff; box-shadow: 0 6px 0 var(--sk, #2ec4b6), 0 10px 30px rgba(18,59,74,.18); text-align: center;
+  pointer-events: none; animation: stageBanner 2.2s ease forwards; }
+.stage-banner b { font-size: 22px; }
+.stage-banner small { font-weight: 800; color: var(--sk, #2ec4b6); }
+.stage-banner.boss { background: linear-gradient(#fff6d6, #fff); }
+@keyframes stageBanner { 0% { opacity: 0; scale: .6; } 15% { opacity: 1; scale: 1.06; } 25% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; scale: .9; visibility: hidden; } }
+.stage-stars { display: flex; justify-content: center; gap: 6px; margin: 2px 0 6px; }
+.stage-stars .star { width: 38px; height: 38px; animation: starIn .5s backwards; }
+.stage-stars .star:nth-child(2) { animation-delay: .15s; } .stage-stars .star:nth-child(3) { animation-delay: .3s; }
+
+/* Stage map */
+.st-head { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 22px; padding: 10px; box-shadow: 0 4px 0 var(--edge); margin-bottom: 8px; }
+.st-head svg { width: 120px; height: 75px; border-radius: 14px; flex: none; }
+.st-head h3 { margin: 0 0 4px; }
+.st-trail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 30px;
+  background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--gc) 14%, transparent), transparent 70%); }
+.st-row { display: flex; flex-direction: column; align-items: center; transform: translateX(var(--off)); }
+.st-node { position: relative; width: 84px; height: 84px; border: 0; border-radius: 50%; cursor: pointer; font: inherit; color: #123b4a;
+  display: grid; place-items: center; align-content: center; gap: 0; line-height: 1;
+  background: linear-gradient(160deg, var(--sk1), var(--sk2)); box-shadow: 0 6px 0 var(--sk), inset 0 0 0 4px #fff; }
+.st-node:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--sk), inset 0 0 0 4px #fff; }
+.st-node .st-emo { font-size: 30px; }
+.st-node b { font-size: 16px; font-weight: 900; }
+.st-node .lvl-stars .star { width: 13px; height: 13px; fill: rgba(18,59,74,.18); }
+.st-node .lvl-stars .star.on { fill: var(--gold); }
+.st-node.locked { background: #e1ecea; color: #9bb5b8; box-shadow: 0 6px 0 #c9d9d7; }
+.st-node.locked .st-emo svg { width: 24px; height: 24px; }
+.st-node.boss { width: 98px; height: 98px; }
+.st-node.rec { animation: pulse 1.4s ease-in-out infinite; }
+.st-rec { position: absolute; top: -10px; inset-inline-end: -18px; font-style: normal; font-size: 11px; font-weight: 800; color: #fff;
+  background: var(--gc, #2ec4b6); padding: 3px 8px; border-radius: 99px; }
+.st-kind { position: absolute; top: -8px; inset-inline-start: -6px; font-style: normal; font-size: 18px; color: #e0a400; }
+.st-kind svg { width: 24px; height: 24px; }
+.st-name { font-size: 12px; font-weight: 700; opacity: .7; margin: 8px 0 10px; }
+@media (prefers-reduced-motion: reduce) { .stage-banner { animation: none !important; } }
