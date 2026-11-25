@@ -719,3 +719,59 @@ body.shapes .choice .shape { opacity: 1; }
 .tide-basket span { width: 64px; height: 64px; }
 .tide-basket svg { width: 100%; height: 100%; }
 .tide-basket:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--edge); }
+
+/* ---------- Memory Island ---------- */
+.isl { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 6px; width: 100%; }
+.isl-q { margin: 4px 0; text-align: center; }
+.isl-strats { display: grid; gap: 10px; width: min(100%, 420px); }
+.isl-strat { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 rgba(18,59,74,.15); font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.isl-strat b { font-size: 1.2rem; }
+.isl-strat small { opacity: .75; }
+.isl-strat .chip { position: absolute; inset-inline-end: 10px; top: 10px; font-size: .75rem; }
+.isl-big { font-size: 5rem; line-height: 1; animation: cardIn .35s; }
+.isl-story { max-width: 460px; font-size: 1.15rem; line-height: 1.8; text-align: center; background: #fff; border-radius: 18px; padding: 12px 16px; margin: 0; }
+.isl-groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 520px); }
+.isl-box { background: #fff; border-radius: 18px; padding: 8px; min-height: 180px; box-shadow: 0 4px 0 rgba(18,59,74,.12); }
+.isl-box b { display: block; text-align: center; margin-bottom: 6px; }
+.isl-box b span { display: inline-block; min-width: 1.4em; border-radius: 99px; background: #eaf7ff; font-size: .85rem; }
+.isl-in { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.isl-item, .isl-spot { display: inline-flex; flex-direction: column; align-items: center; font-size: 2rem; line-height: 1.1; animation: cardIn .3s; }
+.isl-item small, .isl-spot small, .isl-pick small { font-size: .7rem; }
+.isl-map { position: relative; width: min(100%, 460px); aspect-ratio: 4 / 3; border-radius: 50% / 40%; background: radial-gradient(ellipse at 50% 55%, #ffe3a8 60%, #f5c977 61%, #8fd8ff 62%); }
+.isl-palm { position: absolute; left: 50%; top: 38%; translate: -50% -50%; font-size: 2.6rem; opacity: .35; }
+.isl-palm::before { content: '🌴'; }
+.isl-spot { position: absolute; translate: -50% -50%; }
+.isl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; width: min(100%, 520px); }
+.isl-pick { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border: 3px solid transparent; border-radius: 16px; background: #fff; font: inherit; font-size: 2rem; color: inherit; cursor: pointer; box-shadow: 0 3px 0 rgba(18,59,74,.12); }
+.isl-pick.on { border-color: #22b04b; background: #eafbe9; }
+.isl-pick.was:not(.on) { border-color: #ffb627; border-style: dashed; }
+.isl-pick.not.on { border-color: #ff6f59; background: #ffecea; }
+
+/* ---------- Fishing Net ---------- */
+.net { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 6px; width: 100%; }
+.net-river { position: relative; width: min(100%, 460px); height: 210px; border-radius: 26px; overflow: hidden; background: linear-gradient(#8fd8ff, #3a86ff); }
+.net-fish { position: absolute; top: 50%; left: 50%; width: 150px; translate: -50% -50%; }
+.net-fish.swim { animation: swimIn .45s ease-out; }
+.net-fish.caught { animation: caught .5s forwards; }
+@keyframes swimIn { from { transform: translateX(-140%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes caught { to { transform: translateY(-60px) scale(.6); opacity: .2; } }
+.net-trail { position: absolute; bottom: 12px; left: 50%; translate: -50% 0; display: flex; gap: 10px; }
+.net-trail i { width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,.55); }
+.net-trail i.now { background: #ffb627; }
+.net-btn { font-size: 1.4rem; padding: 16px 48px; }
+
+/* ---------- Break Dance ---------- */
+.dance { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px; }
+.dance .rule { font-size: 1.3rem; text-align: center; }
+.dance-stage .char-wrap { width: min(52vw, 220px); }
+.dance-count { font-size: 2.6rem; font-weight: 800; min-height: 1.2em; }
+.mv-jump .char-wrap { animation: hop .5s infinite; }
+.mv-arms .char-wrap { animation: sway .5s infinite; }
+.mv-toes .char-wrap { animation: dnBend 1s infinite; }
+.mv-march .char-wrap { animation: dnMarch .5s infinite; }
+.mv-reach .char-wrap { animation: dnReach 1.4s infinite; }
+.mv-free .char-wrap { animation: dnFree .8s infinite; }
+@keyframes dnBend { 50% { transform: scale(1, .8) translateY(12%); } }
+@keyframes dnMarch { 25% { transform: translateY(-6%) rotate(-4deg); } 75% { transform: translateY(-6%) rotate(4deg); } }
+@keyframes dnReach { 50% { transform: scale(.94, 1.12) translateY(-6%); } }
+@keyframes dnFree { 25% { transform: rotate(-10deg) translateX(-6%); } 75% { transform: rotate(10deg) translateX(6%); } }

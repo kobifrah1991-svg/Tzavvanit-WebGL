@@ -131,7 +131,7 @@
     trendUp: 'משתפר', trendFlat: 'יציב', trendDown: 'קצת ירידה',
     breakTitle: 'תזכורת להפסקה', breakDesc: 'הצעה עדינה לנוח אחרי זמן משחק רצוף', off: 'כבוי', minShort: n => `${n} ד׳`,
     breakNow: 'זמן להפסקה קטנה!', breakText: 'המוח לומד הכי טוב עם הפסקות. אפשר לקום, לשתות מים ולחזור אחר כך.',
-    breakOk: 'אני אנוח', breakMore: 'עוד קצת',
+    breakOk: 'אני אנוח', breakMore: 'עוד קצת', breakDance: 'ריקוד של דקה',
     parentNote: 'המשחקים מבוססים על תרגילים מוכרים לאימון זיכרון עבודה, קשב וריכוז, והקושי מתאים את עצמו לילד. אימון כזה משפר בעיקר את הביצועים במשחקים עצמם; הוא לא מחליף אבחון, טיפול או עזרה לימודית.',
   });
   Object.assign(STR.en, {
@@ -161,7 +161,7 @@
     trendUp: 'Improving', trendFlat: 'Steady', trendDown: 'Slight dip',
     breakTitle: 'Break reminder', breakDesc: 'A gentle nudge to rest after continuous play', off: 'Off', minShort: n => `${n} min`,
     breakNow: 'Time for a short break!', breakText: 'The brain learns best with breaks. Stand up, drink some water and come back later.',
-    breakOk: 'I\'ll rest', breakMore: 'A bit more',
+    breakOk: 'I\'ll rest', breakMore: 'A bit more', breakDance: 'One-minute dance',
     parentNote: 'The games are based on well-known exercises for working memory, attention and focus, and the difficulty adapts to the child. This kind of training mainly improves performance in the games themselves; it does not replace assessment, treatment or learning support.',
   });
   Object.assign(STR.he, {
@@ -311,7 +311,7 @@
   const WORKOUT_BONUS = 40;
   function ensureWorkout() {
     if (save.workout && save.workout.date === today()) return save.workout;
-    const open = GAMES.filter(g => g.id !== 'simon' && g.minLevel <= playerLevel()).sort(() => Math.random() - 0.5);
+    const open = GAMES.filter(g => g.id !== 'simon' && !g.noWorkout && g.minLevel <= playerLevel()).sort(() => Math.random() - 0.5);
     const picked = [];
     for (const g of open) if (picked.length < 3 && !picked.some(p => p.skill === g.skill)) picked.push(g);
     save.workout = { date: today(), games: picked.map(g => g.id), done: [], claimed: false };
@@ -822,9 +822,11 @@
   async function breakReminder() {
     breakDue = false;
     const r = await modal(`${charWrap('happy')}<h2>${t('breakNow')}</h2><p>${t('breakText')}</p>`,
-      [{ id: 'rest', label: t('breakOk'), cls: 'primary' }, { id: 'more', label: t('breakMore') }]);
-    // "A bit more" asks again after 5 minutes of play; resting starts a fresh count
+      [...(GAMES.some(g => g.id === 'dance') ? [{ id: 'dance', label: t('breakDance'), cls: 'primary' }] : []),
+        { id: 'rest', label: t('breakOk'), cls: GAMES.some(g => g.id === 'dance') ? '' : 'primary' }, { id: 'more', label: t('breakMore') }]);
+    // "A bit more" asks again after 5 minutes of play; resting or dancing starts a fresh count
     sessionSecs = r === 'more' ? save.breakMin * 60 - 300 : 0;
+    if (r === 'dance') GAMES.find(g => g.id === 'dance').start();
   }
 
   function applyLang() {
@@ -1179,7 +1181,8 @@
     async finish(game, score, coins, xp, lines = '', perf = { acc: 1, step: 0 }) {
       if (miniCleanup) { miniCleanup(); miniCleanup = null; }
       const ch = recordSession(game.id, score, perf.acc, perf.step);
-      lines += diffHtml(ch);
+      // A plain finish (the movement break) has no difficulty change or record to show
+      if (!perf.plain) lines += diffHtml(ch);
       // Workout progress: this game counts once per day toward the daily workout
       const w = ensureWorkout();
       let wkLine = '';
@@ -1196,8 +1199,8 @@
       if (reward.isBest || wkLine) confettiAt(document.body, 50);
       const praise = t('praise');
       const next = w.games.includes(game.id) ? workoutNext() : null;
-      const r = await modal(`<h2>${score > 0 ? praise[rand(praise.length)] : t('failTitle')}</h2><div class="big-num">${score}</div>${lines}
-        ${reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id] || 0}</p>`}${rewardHtml(reward)}${wkLine}`,
+      const r = await modal(`<h2>${perf.title || (score > 0 ? praise[rand(praise.length)] : t('failTitle'))}</h2><div class="big-num">${score}</div>${lines}
+        ${perf.plain ? '' : reward.isBest ? `<div class="badge">${t('newBest')}</div>` : `<p>${t('best')}: ${save.bests[game.id] || 0}</p>`}${rewardHtml(reward)}${wkLine}`,
         [next ? { id: 'wk', label: t('wk_next', w.done.length + 1, w.games.length), cls: 'primary' } : null,
           { id: 'again', label: t('again'), cls: next ? '' : 'primary' }, { id: 'home', label: t('home') }].filter(Boolean));
       if (r === 'wk') GAMES.find(g => g.id === next).start();
